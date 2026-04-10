@@ -3,62 +3,143 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Jcink Formatter</title>
+  <title>inkform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <script src="theme.js"></script>
 </head>
 <body class="app-body">
 
-  <!-- ── Top bar ──────────────────────────────────────────────── -->
-  <header class="app-header">
-    <div class="app-header__selectors">
-      <div class="select-group">
-        <label for="character-select" class="sr-only">Character</label>
-        <select id="character-select" disabled>
-          <option value="">— Character —</option>
-        </select>
-        <span id="char-status" class="select-status"></span>
-      </div>
-      <div class="select-group">
-        <label for="template-select" class="sr-only">Template</label>
-        <select id="template-select" disabled>
-          <option value="">— Template —</option>
-        </select>
-      </div>
+  <!-- ── Background illustration ────────────────────────────── -->
+  <div class="bg-illustration" aria-hidden="true">
+    <svg viewBox="0 0 300 380" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <rect width="300" height="380" fill="#FDF8F0"/>
+      <!-- Shelf 1 -->
+      <rect x="0" y="128" width="300" height="7" fill="#C8A87A" opacity="0.55"/>
+      <rect x="6"   y="82"  width="18" height="46" fill="#7B3F2D" rx="1.5"/>
+      <rect x="25"  y="77"  width="13" height="51" fill="#2D5B8A" rx="1.5"/>
+      <rect x="39"  y="84"  width="21" height="44" fill="#4A7B3F" rx="1.5"/>
+      <rect x="61"  y="79"  width="15" height="49" fill="#7B5F2D" rx="1.5"/>
+      <rect x="77"  y="86"  width="20" height="42" fill="#5B3A6B" rx="1.5"/>
+      <rect x="98"  y="75"  width="16" height="53" fill="#7A3535" rx="1.5"/>
+      <rect x="115" y="81"  width="22" height="47" fill="#3A5A8A" rx="1.5"/>
+      <rect x="138" y="78"  width="14" height="50" fill="#8A5A2A" rx="1.5"/>
+      <rect x="153" y="83"  width="19" height="45" fill="#2D6B5B" rx="1.5"/>
+      <rect x="173" y="76"  width="17" height="52" fill="#7B3F2D" rx="1.5"/>
+      <rect x="191" y="80"  width="23" height="48" fill="#2D5B8A" rx="1.5"/>
+      <rect x="215" y="84"  width="15" height="44" fill="#4A7B3F" rx="1.5"/>
+      <rect x="231" y="79"  width="20" height="49" fill="#5B3A6B" rx="1.5"/>
+      <rect x="252" y="82"  width="16" height="46" fill="#8A5A2A" rx="1.5"/>
+      <rect x="269" y="77"  width="22" height="51" fill="#2D6B5B" rx="1.5"/>
+      <!-- Shelf 2 -->
+      <rect x="0" y="233" width="300" height="7" fill="#C8A87A" opacity="0.55"/>
+      <rect x="6"   y="185" width="20" height="48" fill="#3A5A8A" rx="1.5"/>
+      <rect x="27"  y="189" width="14" height="44" fill="#7B5F2D" rx="1.5"/>
+      <rect x="42"  y="183" width="22" height="50" fill="#5B3A6B" rx="1.5"/>
+      <rect x="65"  y="187" width="17" height="46" fill="#2D6B5B" rx="1.5"/>
+      <rect x="83"  y="184" width="15" height="49" fill="#7A3535" rx="1.5"/>
+      <rect x="99"  y="181" width="24" height="52" fill="#4A7B3F" rx="1.5"/>
+      <rect x="124" y="186" width="16" height="47" fill="#2D5B8A" rx="1.5"/>
+      <rect x="141" y="182" width="19" height="51" fill="#8A5A2A" rx="1.5"/>
+      <rect x="161" y="188" width="17" height="45" fill="#7B3F2D" rx="1.5"/>
+      <rect x="179" y="184" width="20" height="49" fill="#3A5A8A" rx="1.5"/>
+      <!-- Candle -->
+      <ellipse cx="258" cy="200" rx="32" ry="26" fill="#F9C84A" opacity="0.09"/>
+      <ellipse cx="258" cy="210" rx="18" ry="14" fill="#F9C84A" opacity="0.07"/>
+      <rect x="251" y="208" width="13" height="25" fill="#E8D8B0" rx="2"/>
+      <path  d="M251 218 Q249 223 253 226" fill="#E8D8B0" opacity="0.6"/>
+      <line  x1="257" y1="208" x2="258" y2="203" stroke="#3A2010" stroke-width="1.2"/>
+      <ellipse cx="258" cy="196" rx="6"   ry="9"   fill="#F9C84A" opacity="0.88"/>
+      <ellipse cx="258" cy="198" rx="3.5" ry="6"   fill="#FDE88A"/>
+      <ellipse cx="258" cy="201" rx="1.8" ry="3"   fill="#FFFFFF" opacity="0.9"/>
+      <!-- Shelf 3 -->
+      <rect x="0" y="328" width="300" height="7" fill="#C8A87A" opacity="0.55"/>
+      <rect x="6"   y="281" width="19" height="47" fill="#8A5A2A" rx="1.5"/>
+      <rect x="26"  y="285" width="15" height="43" fill="#4A7B3F" rx="1.5"/>
+      <rect x="42"  y="279" width="21" height="49" fill="#7B3F2D" rx="1.5"/>
+      <rect x="64"  y="283" width="17" height="45" fill="#2D5B8A" rx="1.5"/>
+      <rect x="82"  y="280" width="16" height="48" fill="#7B5F2D" rx="1.5"/>
+      <rect x="99"  y="277" width="23" height="51" fill="#5B3A6B" rx="1.5"/>
+      <rect x="123" y="282" width="15" height="46" fill="#3A5A8A" rx="1.5"/>
+      <rect x="139" y="279" width="20" height="49" fill="#7A3535" rx="1.5"/>
+      <rect x="160" y="284" width="16" height="44" fill="#2D6B5B" rx="1.5"/>
+      <rect x="177" y="280" width="22" height="48" fill="#8A5A2A" rx="1.5"/>
+      <!-- Quill + ink pot -->
+      <ellipse cx="248" cy="325" rx="13" ry="4.5" fill="#1E1830" opacity="0.35"/>
+      <path  d="M235 295 Q235 302 235 315 Q235 328 248 328 Q261 328 261 315 Q261 302 261 295 Q261 287 248 286 Q235 287 235 295Z" fill="#1E1830"/>
+      <ellipse cx="248" cy="286" rx="10" ry="4.5" fill="#2A2050"/>
+      <ellipse cx="245" cy="284" rx="4"  ry="2"   fill="#4A3A8A" opacity="0.45"/>
+      <line  x1="248" y1="283" x2="278" y2="255"  stroke="#C8A870" stroke-width="2.2" stroke-linecap="round"/>
+      <path  d="M278 255 C272 250 274 244 280 246 C284 243 287 249 278 255Z" fill="#C8A870"/>
+      <path  d="M263 270 C261 267 265 265 266 268Z" fill="#C8A870" opacity="0.65"/>
+      <path  d="M269 264 C267 261 271 260 272 263Z" fill="#C8A870" opacity="0.65"/>
+      <!-- Desk -->
+      <rect x="0" y="335" width="300" height="45" fill="#C8A87A" opacity="0.13"/>
+    </svg>
+    <div class="bg-overlay"></div>
+  </div>
+
+  <!-- ── Navbar ──────────────────────────────────────────────── -->
+  <nav class="navbar">
+    <span class="nav-logo">inkform</span>
+    <div class="nav-actions">
+      <button id="theme-toggle" class="btn-ghost" aria-label="Toggle dark mode">
+        <span class="theme-toggle-icon">☽</span>
+      </button>
+      <button id="logout-btn" class="btn-ghost">Sign Out</button>
     </div>
-    <button id="logout-btn" class="btn-ghost">Sign Out</button>
-  </header>
+  </nav>
 
-  <!-- ── Formatter panes ──────────────────────────────────────── -->
-  <main class="formatter">
-
-    <div class="pane pane--input">
-      <div class="pane__header">
-        <span class="pane__label">Raw Post</span>
-      </div>
-      <textarea
-        id="raw-input"
-        class="pane__textarea"
-        placeholder="Paste or type your raw post here…"
-        spellcheck="true"
-        autocorrect="on"
-      ></textarea>
+  <!-- ── Character / template selectors ────────────────────── -->
+  <div class="formatter-controls">
+    <div class="field">
+      <label class="field-label" for="character-select">Character</label>
+      <select class="dropdown" id="character-select" disabled>
+        <option value="">— Select character —</option>
+      </select>
+      <span id="char-status" class="select-status"></span>
     </div>
-
-    <div class="pane pane--output">
-      <div class="pane__header">
-        <span class="pane__label">Formatted Output</span>
-        <button id="copy-btn" class="btn-copy">Copy</button>
-      </div>
-      <div
-        id="formatted-output"
-        class="pane__output"
-        aria-live="polite"
-      >
-        <span class="output-placeholder">Formatted output appears here…</span>
-      </div>
+    <div class="field">
+      <label class="field-label" for="template-select">Template</label>
+      <select class="dropdown" id="template-select" disabled>
+        <option value="">— Select template —</option>
+      </select>
     </div>
+  </div>
 
-  </main>
+  <!-- ── Formatter panes ────────────────────────────────────── -->
+  <div class="formatter-main">
+    <div class="formatter-grid">
+
+      <div class="pane pane--input">
+        <div class="pane-header">
+          <span class="field-label">Raw Post</span>
+        </div>
+        <textarea
+          id="raw-input"
+          class="textarea-input"
+          placeholder="Paste or type your raw post here…"
+          spellcheck="true"
+          autocorrect="on"
+        ></textarea>
+      </div>
+
+      <div class="pane pane--output">
+        <div class="pane-header">
+          <span class="field-label">Formatted Output</span>
+          <button id="copy-btn" class="btn-copy">Copy</button>
+        </div>
+        <div
+          id="formatted-output"
+          class="output-area"
+          aria-live="polite"
+        ><span class="output-placeholder">Formatted output appears here…</span></div>
+      </div>
+
+    </div>
+  </div>
 
   <script src="config.js"></script>
   <script type="module" src="home.js"></script>
