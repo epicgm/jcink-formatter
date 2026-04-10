@@ -151,3 +151,213 @@ input:focus {
     padding: 48px 40px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   APP LAYOUT
+   ═══════════════════════════════════════════════════════ */
+
+.app-body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.app-header__selectors {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.select-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 140px;
+}
+
+.app-header select {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  min-height: 40px;
+}
+
+.app-header select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.app-header select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.select-status {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ── Buttons (app chrome) ───────────────────────────── */
+.btn-ghost {
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 40px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-ghost:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn-copy {
+  padding: 6px 14px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 34px;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-copy:hover    { background: var(--color-primary-hover); }
+.btn-copy:active   { transform: scale(0.97); }
+.btn-copy.btn--copied {
+  background: #16a34a;
+}
+
+/* ── Formatter panes ────────────────────────────────── */
+.formatter {
+  display: flex;
+  flex-direction: column;   /* stacked on mobile */
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pane--input {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pane__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.pane__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.pane__textarea {
+  flex: 1;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  resize: none;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  background: var(--color-surface);
+  outline: none;
+  font-family: inherit;
+}
+
+.pane__output {
+  flex: 1;
+  padding: 14px 16px;
+  overflow-y: auto;
+  background: var(--color-surface);
+  font-size: 1rem;
+  line-height: 1.6;
+  word-break: break-word;
+  -webkit-overflow-scrolling: touch;
+}
+
+.output-placeholder {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ── Parser output tokens ───────────────────────────── */
+.dialogue {
+  color: #4f46e5;
+}
+.thought {
+  color: #0891b2;
+  font-style: italic;
+}
+
+/* ── Screen-reader only ─────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Desktop: side-by-side panes ────────────────────── */
+@media (min-width: 768px) {
+  .formatter {
+    flex-direction: row;
+  }
+  .pane--input {
+    border-bottom: none;
+    border-right: 1px solid var(--color-border);
+  }
+}

@@ -6,9 +6,61 @@
   <title>Jcink Formatter</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-  <p style="padding:2rem;color:#6b7280;font-family:-apple-system,sans-serif;">
-    Home page coming soon.
-  </p>
+<body class="app-body">
+
+  <!-- ── Top bar ──────────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="app-header__selectors">
+      <div class="select-group">
+        <label for="character-select" class="sr-only">Character</label>
+        <select id="character-select" disabled>
+          <option value="">— Character —</option>
+        </select>
+        <span id="char-status" class="select-status"></span>
+      </div>
+      <div class="select-group">
+        <label for="template-select" class="sr-only">Template</label>
+        <select id="template-select" disabled>
+          <option value="">— Template —</option>
+        </select>
+      </div>
+    </div>
+    <button id="logout-btn" class="btn-ghost">Sign Out</button>
+  </header>
+
+  <!-- ── Formatter panes ──────────────────────────────────────── -->
+  <main class="formatter">
+
+    <div class="pane pane--input">
+      <div class="pane__header">
+        <span class="pane__label">Raw Post</span>
+      </div>
+      <textarea
+        id="raw-input"
+        class="pane__textarea"
+        placeholder="Paste or type your raw post here…"
+        spellcheck="true"
+        autocorrect="on"
+      ></textarea>
+    </div>
+
+    <div class="pane pane--output">
+      <div class="pane__header">
+        <span class="pane__label">Formatted Output</span>
+        <button id="copy-btn" class="btn-copy">Copy</button>
+      </div>
+      <div
+        id="formatted-output"
+        class="pane__output"
+        aria-live="polite"
+      >
+        <span class="output-placeholder">Formatted output appears here…</span>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="config.js"></script>
+  <script type="module" src="home.js"></script>
 </body>
 </html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Parser Tests</title>
+  <style>
+    body { font-family: monospace; padding: 24px; background: #111; color: #eee; }
+    .pass { color: #4ade80; }
+    .fail { color: #f87171; }
+    pre  { margin: 4px 0 12px 24px; color: #94a3b8; font-size: 0.85em; white-space: pre-wrap; }
+    h2   { color: #818cf8; margin-bottom: 16px; }
+    #summary { margin-top: 16px; font-size: 1.1em; font-weight: bold; }
+  </style>
+</head>
+<body>
+<h2>── Parser Test Agent ──────────────────────────────────</h2>
+<div id="output"></div>
+<div id="summary"></div>
+
+<script type="module">
+import { formatPost } from './parser.js';
+
+const D_OPEN  = '<span class="dialogue">';
+const D_CLOSE = '</span>';
+const T_OPEN  = '<span class="thought">';
+const T_CLOSE = '</span>';
+
+const TESTS = [
+  {
+    id: 1, name: 'Simple straight quotes',
+    input: '"Hello there"',
+    check: out => out === `${D_OPEN}"Hello there"${D_CLOSE}`,
+    expect: `dialogue span wraps "Hello there"`,
+  },
+  {
+    id: 2, name: 'Apostrophe inside dialogue',
+    input: `"I don't know what happened"`,
+    check: out => out === `${D_OPEN}"I don't know what happened"${D_CLOSE}`,
+    expect: `apostrophe in don't preserved; full string wrapped as dialogue`,
+  },
+  {
+    id: 3, name: 'Possessive not treated as thought',
+    input: `Helena's eyes narrowed slowly`,
+    check: out => out === `Helena's eyes narrowed slowly`,
+    expect: `output unchanged — Helena's must not produce a thought span`,
+  },
+  {
+    id: 4, name: 'Curly double quotes',
+    input: '\u201CHello there\u201D',
+    check: out => out === `${D_OPEN}\u201CHello there\u201D${D_CLOSE}`,
+    expect: `curly " " quotes wrapped as dialogue`,
+  },
+  {
+    id: 5, name: 'Mixed: dialogue + thought + possessive',
+    input: `She narrowed her eyes. "I don't know." 'Suspicious.' Helena's instincts screamed.`,
+    check(out) {
+      return out.includes(`${D_OPEN}"I don't know."${D_CLOSE}`)
+          && out.includes(`${T_OPEN}'Suspicious.'${T_CLOSE}`)
+          && out.includes(`Helena's instincts screamed.`)
+          && !out.match(/Helena.{0,10}<span class="thought">/);
+    },
+    expect: `dialogue + thought wrapped; Helena's possessive unchanged`,
+  },
+];
+
+let passed = 0, failed = 0;
+const out = document.getElementById('output');
+
+for (const t of TESTS) {
+  const result = formatPost(t.input);
+  const ok     = t.check(result);
+  ok ? passed++ : failed++;
+
+  const line = document.createElement('div');
+  line.className = ok ? 'pass' : 'fail';
+  line.textContent = `[${ok ? 'PASS' : 'FAIL'}] Test ${t.id}: ${t.name}`;
+  out.appendChild(line);
+
+  if (!ok) {
+    const detail = document.createElement('pre');
+    detail.textContent = `Expected: ${t.expect}\nGot     : ${result}`;
+    out.appendChild(detail);
+  }
+}
+
+const summary = document.getElementById('summary');
+summary.textContent = `────────────────────────────────────────\nResult: ${passed}/5 passed  |  ${failed}/5 failed`;
+summary.className = failed === 0 ? 'pass' : 'fail';
+</script>
+</body>
+</html>
