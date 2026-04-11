@@ -46,11 +46,25 @@ const editHtmlIn      = document.getElementById('edit-html');
 const themeToggle     = document.getElementById('theme-toggle');
 const logoutBtn       = document.getElementById('logout-btn');
 
+// Suggest dialog
+const suggestDialog     = document.getElementById('suggest-dialog');
+const suggestTriggerEl  = document.getElementById('suggest-dialog-trigger');
+const suggestConfirmBtn = document.getElementById('suggest-confirm-btn');
+
+// Diff dialog
+const diffDialog        = document.getElementById('diff-dialog');
+const diffTriggerEl     = document.getElementById('diff-dialog-trigger');
+const diffBlock         = document.getElementById('diff-block');
+const diffSyncBtn       = document.getElementById('diff-sync-btn');
+const diffKeepBtn       = document.getElementById('diff-keep-btn');
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let _globalBlock  = null;  // block being made global
-let _editBlockId  = null;
-let _builderOpen  = false;
+let _globalBlock   = null;  // block being made global
+let _editBlockId   = null;
+let _builderOpen   = false;
+let _suggestBlock  = null;  // block pending suggest confirmation
+let _diffBlock     = null;  // { userBlockId, boardHtml } pending sync decision
 
 // ── Theme toggle ──────────────────────────────────────────────────────────────
 
@@ -133,12 +147,26 @@ async function loadMyLibrary() {
   myEmpty.hidden = blocks.length > 0;
   myBlocksGrid.innerHTML = '';
 
+  // Batch-fetch board blocks for all "Add" copies to detect updates
+  const boardSourceIds = blocks.map(b => b.board_source_id).filter(Boolean);
+  const boardHtmlMap = {};
+  if (boardSourceIds.length) {
+    const { data: boardBlocks } = await supabase
+      .from('board_library')
+      .select('id, replacement_html')
+      .in('id', boardSourceIds);
+    for (const bb of boardBlocks ?? []) boardHtmlMap[bb.id] = bb.replacement_html;
+  }
+
   for (const b of blocks) {
-    myBlocksGrid.appendChild(makeMyCard(b));
+    const hasUpdate = b.board_source_id
+      && boardHtmlMap[b.board_source_id] !== undefined
+      && boardHtmlMap[b.board_source_id] !== b.replacement_html;
+    myBlocksGrid.appendChild(makeMyCard(b, hasUpdate ? boardHtmlMap[b.board_source_id] : null));
   }
 }
 
-function makeMyCard(b) {
+function makeMyCard(b, boardUpdatedHtml = null) {
   const card = document.createElement('div');
   card.className = 'block-card';
   card.dataset.id = b.id;
@@ -169,12 +197,26 @@ function makeMyCard(b) {
   preview.innerHTML = b.replacement_html || '<span class="output-placeholder">No HTML set.</span>';
   card.appendChild(preview);
 
-  // Source badge (for board copies)
+  // Source badge (for board copies) + update badge
   if (b.board_source_id) {
+    const badgeRow = document.createElement('div');
+    badgeRow.className = 'block-card-badge-row';
+
     const badge = document.createElement('p');
     badge.className = 'block-card-badge';
-    badge.textContent = 'Locked board copy — receives updates';
-    card.appendChild(badge);
+    badge.textContent = 'Locked board copy';
+    badgeRow.appendChild(badge);
+
+    if (boardUpdatedHtml !== null) {
+      const updateBtn = document.createElement('button');
+      updateBtn.type = 'button';
+      updateBtn.className = 'update-badge';
+      updateBtn.textContent = 'Update available';
+      updateBtn.addEventListener('click', () => openDiffDialog(b, boardUpdatedHtml));
+      badgeRow.appendChild(updateBtn);
+    }
+
+    card.appendChild(badgeRow);
   } else if (b.forked_from) {
     const badge = document.createElement('p');
     badge.className = 'block-card-badge';
@@ -356,22 +398,89 @@ async function deleteBlock(id, trigger) {
 
 // ── Suggest to board ──────────────────────────────────────────────────────────
 
-async function suggestToBoard(b) {
-  if (!confirm(`Suggest "::${b.trigger}::" to the board library?\n\nAn admin will review it before it appears publicly.`)) return;
+function suggestToBoard(b) {
+  _suggestBlock = b;
+  suggestTriggerEl.textContent = `::${b.trigger}::`;
+  suggestDialog.showModal();
+  suggestConfirmBtn.focus();
+}
+
+suggestConfirmBtn.addEventListener('click', async () => {
+  if (!_suggestBlock) return;
+  suggestConfirmBtn.disabled = true;
+  suggestConfirmBtn.textContent = 'Submitting…';
 
   const { error } = await supabase.from('board_library').insert({
-    trigger:          b.trigger,
-    replacement_html: b.replacement_html,
+    trigger:          _suggestBlock.trigger,
+    replacement_html: _suggestBlock.replacement_html,
     added_by:         userId,
     status:           'pending',
   });
 
+  suggestConfirmBtn.disabled = false;
+  suggestConfirmBtn.textContent = 'Submit for review';
+  suggestDialog.close();
+  _suggestBlock = null;
+
   if (error) {
     alert(`Could not suggest block: ${error.message}`);
-  } else {
-    alert(`"::${b.trigger}::" has been submitted for board review.`);
   }
+});
+
+// ── Diff / update propagation ─────────────────────────────────────────────────
+
+function openDiffDialog(b, boardHtml) {
+  _diffBlock = { userBlockId: b.id, boardHtml };
+  diffTriggerEl.textContent = `::${b.trigger}::`;
+  diffBlock.innerHTML = '';
+
+  const mine   = (b.replacement_html ?? '').split('\n');
+  const theirs = (boardHtml ?? '').split('\n');
+  const maxLen = Math.max(mine.length, theirs.length);
+
+  for (let i = 0; i < maxLen; i++) {
+    const mLine = mine[i]   ?? null;
+    const tLine = theirs[i] ?? null;
+
+    if (mLine === tLine) {
+      diffBlock.appendChild(makeDiffLine(mLine, 'same'));
+    } else {
+      if (mLine !== null) diffBlock.appendChild(makeDiffLine(mLine,  'removed'));
+      if (tLine !== null) diffBlock.appendChild(makeDiffLine(tLine,  'added'));
+    }
+  }
+
+  diffDialog.showModal();
 }
+
+function makeDiffLine(text, type) {
+  const el = document.createElement('div');
+  el.className = `diff-line diff-line--${type}`;
+  const prefix = type === 'added' ? '+' : type === 'removed' ? '-' : ' ';
+  el.textContent = `${prefix} ${text}`;
+  return el;
+}
+
+diffSyncBtn.addEventListener('click', async () => {
+  if (!_diffBlock) return;
+  diffSyncBtn.disabled = true;
+  diffSyncBtn.textContent = 'Syncing…';
+
+  await supabase.from('user_library')
+    .update({ replacement_html: _diffBlock.boardHtml })
+    .eq('id', _diffBlock.userBlockId);
+
+  diffSyncBtn.disabled = false;
+  diffSyncBtn.textContent = 'Sync to board version';
+  diffDialog.close();
+  _diffBlock = null;
+  await loadMyLibrary();
+});
+
+diffKeepBtn.addEventListener('click', () => {
+  diffDialog.close();
+  _diffBlock = null;
+});
 
 // ── BOARD LIBRARY ─────────────────────────────────────────────────────────────
 

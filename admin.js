@@ -1,0 +1,350 @@
+/**
+ * admin.js — Admin panel: user management + board library review queue
+ * Requires config.js loaded first.
+ * Redirects non-admin users to home.html immediately.
+ */
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+// ── Auth + admin guard ────────────────────────────────────────────────────────
+
+const { data: { session } } = await supabase.auth.getSession();
+if (!session) { window.location.href = 'index.html'; }
+const userId = session.user.id;
+
+const { data: selfProfile } = await supabase
+  .from('users')
+  .select('role')
+  .eq('id', userId)
+  .single();
+
+if (selfProfile?.role !== 'admin') {
+  window.location.href = 'home.html';
+}
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+
+const tabBtns          = document.querySelectorAll('.tab-btn');
+const themeToggle      = document.getElementById('theme-toggle');
+const logoutBtn        = document.getElementById('logout-btn');
+
+// Users tab
+const createUserForm   = document.getElementById('create-user-form');
+const newUsernameIn    = document.getElementById('new-username');
+const newPasswordIn    = document.getElementById('new-password');
+const newRoleSel       = document.getElementById('new-role');
+const createUserBtn    = document.getElementById('create-user-btn');
+const createUserStatus = document.getElementById('create-user-status');
+const userTbody        = document.getElementById('user-tbody');
+const usersEmpty       = document.getElementById('users-empty');
+
+// Review queue tab
+const reviewList       = document.getElementById('review-list');
+const reviewEmpty      = document.getElementById('review-empty');
+const queueCount       = document.getElementById('queue-count');
+
+// Reject dialog
+const rejectDialog     = document.getElementById('reject-dialog');
+const rejectForm       = document.getElementById('reject-form');
+const rejectNote       = document.getElementById('reject-note');
+const rejectTriggerEl  = document.getElementById('reject-dialog-trigger').querySelector('code');
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let _rejectBlockId = null;
+
+// ── Theme + logout ────────────────────────────────────────────────────────────
+
+themeToggle.addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('inkform-theme', next);
+  themeToggle.querySelector('.theme-toggle-icon').textContent = next === 'dark' ? '☀' : '☽';
+});
+if (document.documentElement.getAttribute('data-theme') === 'dark') {
+  themeToggle.querySelector('.theme-toggle-icon').textContent = '☀';
+}
+
+logoutBtn.addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  window.location.href = 'index.html';
+});
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabBtns.forEach(b => {
+      b.classList.toggle('active', b === btn);
+      b.setAttribute('aria-selected', String(b === btn));
+    });
+    const target = btn.dataset.tab;
+    document.querySelectorAll('.tab-panel').forEach(p => {
+      p.hidden = p.id !== `tab-${target}`;
+    });
+    if (target === 'review') loadReviewQueue();
+  });
+});
+
+// ── Dialog helpers ────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.dialog-cancel').forEach(btn => {
+  btn.addEventListener('click', () => btn.closest('dialog').close());
+});
+document.querySelectorAll('.manage-dialog').forEach(dlg => {
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+});
+
+// ── USERS TAB ─────────────────────────────────────────────────────────────────
+
+async function loadUsers() {
+  const { data } = await supabase
+    .from('users')
+    .select('id, username, role, created_at, active')
+    .order('created_at');
+
+  const users = data ?? [];
+  usersEmpty.hidden = users.length > 0;
+  userTbody.innerHTML = '';
+
+  for (const u of users) {
+    const tr = document.createElement('tr');
+    tr.className = u.active === false ? 'user-row--inactive' : '';
+
+    tr.innerHTML = `
+      <td class="td-username">${escHtml(u.username)}</td>
+      <td><span class="role-tag role-tag--${u.role}">${u.role}</span></td>
+      <td class="td-date">${new Date(u.created_at).toLocaleDateString()}</td>
+      <td><span class="status-tag ${u.active === false ? 'status-tag--inactive' : 'status-tag--active'}">${u.active === false ? 'Inactive' : 'Active'}</span></td>
+      <td class="td-actions"></td>
+    `;
+
+    const actionsCell = tr.querySelector('.td-actions');
+
+    if (u.active !== false && u.id !== userId) {
+      // Don't show deactivate for self or already-inactive
+      const deactivateBtn = document.createElement('button');
+      deactivateBtn.type = 'button';
+      deactivateBtn.className = 'btn-sm btn-danger';
+      deactivateBtn.textContent = 'Deactivate';
+      deactivateBtn.addEventListener('click', () => deactivateUser(u.id, u.username));
+      actionsCell.appendChild(deactivateBtn);
+    }
+
+    if (u.active === false) {
+      const reactivateBtn = document.createElement('button');
+      reactivateBtn.type = 'button';
+      reactivateBtn.className = 'btn-sm btn-ghost';
+      reactivateBtn.textContent = 'Reactivate';
+      reactivateBtn.addEventListener('click', () => reactivateUser(u.id));
+      actionsCell.appendChild(reactivateBtn);
+    }
+
+    userTbody.appendChild(tr);
+  }
+}
+
+// ── Create user ───────────────────────────────────────────────────────────────
+
+createUserForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = newUsernameIn.value.trim();
+  const password = newPasswordIn.value;
+  const role     = newRoleSel.value;
+
+  if (!username || !password) return;
+
+  createUserBtn.disabled = true;
+  createUserBtn.textContent = 'Creating…';
+  createUserStatus.textContent = '';
+
+  try {
+    const { data, error } = await supabase.functions.invoke('admin-create-user', {
+      body: { username, password, role },
+    });
+
+    if (error) throw new Error(error.message);
+    if (data?.error) throw new Error(data.error);
+
+    createUserStatus.textContent = `✓ Created ${username} (${role})`;
+    createUserStatus.style.color = 'var(--color-teal)';
+    newUsernameIn.value = '';
+    newPasswordIn.value = '';
+    newRoleSel.value = 'user';
+    await loadUsers();
+
+  } catch (err) {
+    createUserStatus.textContent = `Error: ${err.message}`;
+    createUserStatus.style.color = 'var(--color-danger)';
+  } finally {
+    createUserBtn.disabled = false;
+    createUserBtn.textContent = 'Create User';
+  }
+});
+
+// ── Deactivate / reactivate ───────────────────────────────────────────────────
+
+async function deactivateUser(id, username) {
+  if (!confirm(`Deactivate "${username}"? They will be blocked from logging in.`)) return;
+  await supabase.from('users').update({ active: false }).eq('id', id);
+  await loadUsers();
+}
+
+async function reactivateUser(id) {
+  await supabase.from('users').update({ active: true }).eq('id', id);
+  await loadUsers();
+}
+
+// ── REVIEW QUEUE ──────────────────────────────────────────────────────────────
+
+async function loadReviewQueue() {
+  reviewList.innerHTML = '';
+  reviewEmpty.hidden = true;
+
+  const { data: blocks } = await supabase
+    .from('board_library')
+    .select('id, trigger, replacement_html, added_by, status')
+    .eq('status', 'pending')
+    .order('id');
+
+  const pending = blocks ?? [];
+
+  // Update queue badge count
+  if (pending.length > 0) {
+    queueCount.textContent = String(pending.length);
+    queueCount.hidden = false;
+  } else {
+    queueCount.hidden = true;
+  }
+
+  if (!pending.length) {
+    reviewEmpty.hidden = false;
+    return;
+  }
+
+  // Fetch submitter usernames in one query
+  const submitterIds = [...new Set(pending.map(b => b.added_by).filter(Boolean))];
+  const usernameMap = {};
+  if (submitterIds.length) {
+    const { data: submitters } = await supabase
+      .from('users')
+      .select('id, username')
+      .in('id', submitterIds);
+    for (const u of submitters ?? []) usernameMap[u.id] = u.username;
+  }
+
+  for (const b of pending) {
+    reviewList.appendChild(makeReviewCard(b, usernameMap[b.added_by] ?? 'unknown'));
+  }
+}
+
+function makeReviewCard(b, submitterName) {
+  const card = document.createElement('div');
+  card.className = 'review-card';
+  card.id = `review-${b.id}`;
+
+  // Header
+  card.innerHTML = `
+    <div class="review-card-header">
+      <span class="block-card-trigger">::${escHtml(b.trigger)}::</span>
+      <span class="review-submitter">Submitted by <strong>${escHtml(submitterName)}</strong></span>
+    </div>
+  `;
+
+  // Live preview
+  const preview = document.createElement('div');
+  preview.className = 'block-card-preview output-area review-card-preview';
+  preview.innerHTML = b.replacement_html || '<span class="output-placeholder">No HTML</span>';
+  card.appendChild(preview);
+
+  // Actions row (no inline textarea for reject note — opens dialog)
+  const footer = document.createElement('div');
+  footer.className = 'review-card-footer';
+
+  const approveBtn = document.createElement('button');
+  approveBtn.type = 'button';
+  approveBtn.className = 'btn-sm btn-primary';
+  approveBtn.textContent = 'Approve';
+  approveBtn.addEventListener('click', () => approveBlock(b.id, card));
+
+  const rejectBtn = document.createElement('button');
+  rejectBtn.type = 'button';
+  rejectBtn.className = 'btn-sm btn-danger';
+  rejectBtn.textContent = 'Reject';
+  rejectBtn.addEventListener('click', () => openRejectDialog(b.id, b.trigger));
+
+  footer.appendChild(approveBtn);
+  footer.appendChild(rejectBtn);
+  card.appendChild(footer);
+
+  return card;
+}
+
+async function approveBlock(id, card) {
+  const { error } = await supabase
+    .from('board_library')
+    .update({ status: 'published' })
+    .eq('id', id);
+
+  if (error) { alert(error.message); return; }
+
+  card.classList.add('review-card--done');
+  card.querySelector('.review-card-footer').innerHTML =
+    '<span class="review-done-label review-done-label--approved">✓ Published</span>';
+
+  // Update badge count
+  await loadReviewQueue();
+}
+
+function openRejectDialog(id, trigger) {
+  _rejectBlockId = id;
+  rejectTriggerEl.textContent = `::${trigger}::`;
+  rejectNote.value = '';
+  rejectDialog.showModal();
+  rejectNote.focus();
+}
+
+rejectForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!_rejectBlockId) return;
+
+  const note = rejectNote.value.trim() || null;
+  const { error } = await supabase
+    .from('board_library')
+    .update({ status: 'rejected', rejection_note: note })
+    .eq('id', _rejectBlockId);
+
+  if (error) { alert(error.message); return; }
+
+  rejectDialog.close();
+  _rejectBlockId = null;
+  await loadReviewQueue();
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function escHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+await loadUsers();
+
+// Pre-fetch queue count for badge
+supabase
+  .from('board_library')
+  .select('id', { count: 'exact', head: true })
+  .eq('status', 'pending')
+  .then(({ count }) => {
+    if (count) {
+      queueCount.textContent = String(count);
+      queueCount.hidden = false;
+    }
+  });

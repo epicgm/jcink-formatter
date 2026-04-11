@@ -201,6 +201,29 @@
     </form>
   </dialog>
 
+  <!-- ── Suggest to board dialog ───────────────────────────── -->
+  <dialog id="suggest-dialog" class="manage-dialog">
+    <h3 class="dialog-title">Suggest to Board</h3>
+    <p class="global-dialog-subtitle"><code id="suggest-dialog-trigger" class="trigger-code"></code></p>
+    <p style="font-size:14px;color:var(--color-text);margin-bottom:var(--space-lg)">Send this block to an admin for review. Once approved, it will appear in the Board Library for all users.</p>
+    <div class="dialog-footer">
+      <button type="button" class="btn-secondary dialog-cancel">Cancel</button>
+      <button type="button" class="btn-primary" id="suggest-confirm-btn">Submit for review</button>
+    </div>
+  </dialog>
+
+  <!-- ── Diff / update dialog ──────────────────────────────── -->
+  <dialog id="diff-dialog" class="manage-dialog manage-dialog--wide">
+    <h3 class="dialog-title">Update Available</h3>
+    <p class="global-dialog-subtitle"><code id="diff-dialog-trigger" class="trigger-code"></code></p>
+    <p class="field-hint" style="margin-bottom:var(--space-md)">The board version of this block has changed. Review the diff and choose what to do.</p>
+    <div id="diff-block" class="diff-block"></div>
+    <div class="dialog-footer">
+      <button type="button" class="btn-secondary" id="diff-keep-btn">Keep mine</button>
+      <button type="button" class="btn-primary"   id="diff-sync-btn">Sync to board version</button>
+    </div>
+  </dialog>
+
   <script src="config.js"></script>
   <script type="module" src="library.js"></script>
 </body>

@@ -25,7 +25,7 @@ if (loginForm) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Signing in…';
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({
       email:    emailInput.value.trim(),
       password: passwordInput.value,
     });
@@ -35,8 +35,25 @@ if (loginForm) {
       errorEl.classList.add('visible');
       submitBtn.disabled = false;
       submitBtn.textContent = 'Sign In';
-    } else {
-      window.location.href = 'home.html';
+      return;
     }
+
+    // Check if account is still active
+    const { data: profile } = await supabase
+      .from('users')
+      .select('active')
+      .eq('id', signInData.session.user.id)
+      .single();
+
+    if (profile?.active === false) {
+      await supabase.auth.signOut();
+      errorEl.textContent = 'Your account has been deactivated. Please contact an admin.';
+      errorEl.classList.add('visible');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Sign In';
+      return;
+    }
+
+    window.location.href = 'home.html';
   });
 }
