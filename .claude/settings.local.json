@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node parser.test.mjs)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Read(//c/Users/naler/AppData/Roaming/**)",
+      "Bash(powershell.exe -Command \"node --version\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(powershell.exe -Command \"Get-Command npx,http-server,serve,php,ruby 2>$null | Select-Object Name,Source\")",
+      "Bash(powershell.exe -Command \"try { Get-Command dotnet | Select-Object Name } catch {}\")",
+      "Bash(powershell.exe -Command \"dotnet --version\")",
+      "Bash(powershell.exe -Command \"Get-Command deno -ErrorAction SilentlyContinue\")",
+      "Bash(powershell.exe -Command \"deno --version\")",
+      "Bash(powershell.exe -Command \"dotnet tool list -g\")",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\\\Development\\\\jcink-formatter\\\\.claude\\\\verify.ps1\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "jcink-formatter",
+      "runtimeExecutable": "dotnet-serve",
+      "runtimeArgs": ["-p", "8080", "-d", "C:\\Development\\jcink-formatter"],
+      "port": 8080
+    }
+  ]
+}
