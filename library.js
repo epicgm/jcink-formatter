@@ -21,6 +21,9 @@ const { data: { session } } = await supabase.auth.getSession();
 if (!session) { window.location.href = 'index.html'; }
 const userId = session.user.id;
 
+const _adminLink = document.getElementById('admin-link');
+if (_adminLink && localStorage.getItem('inkform_role') === 'admin') _adminLink.hidden = false;
+
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 
 // Tabs
@@ -101,6 +104,7 @@ if (document.documentElement.getAttribute('data-theme') === 'dark') {
 
 logoutBtn.addEventListener('click', async () => {
   await supabase.auth.signOut();
+  localStorage.removeItem('inkform_role');
   window.location.href = 'index.html';
 });
 

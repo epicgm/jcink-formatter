@@ -15,11 +15,17 @@ import {
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-// ── Auth guard ────────────────────────────────────────────────────────────────
+// ── Auth guard + role ─────────────────────────────────────────────────────────
 
 const { data: { session } } = await supabase.auth.getSession();
 if (!session) { window.location.href = 'index.html'; }
 const userId = session.user.id;
+
+// Show Admin nav link for admin users
+const _adminLink = document.getElementById('admin-link');
+if (_adminLink && localStorage.getItem('inkform_role') === 'admin') {
+  _adminLink.hidden = false;
+}
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 
@@ -247,6 +253,7 @@ paneTabPreview.addEventListener('click', () => {
 
 logoutBtn.addEventListener('click', async () => {
   await supabase.auth.signOut();
+  localStorage.removeItem('inkform_role');
   window.location.href = 'index.html';
 });
 
