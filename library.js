@@ -15,10 +15,13 @@ import {
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
+// Hide immediately — revealed only after session confirmed, preventing flash.
+document.body.style.visibility = 'hidden';
+
 // ── Auth guard ────────────────────────────────────────────────────────────────
 
 const { data: { session } } = await supabase.auth.getSession();
-if (!session) { window.location.href = 'index.html'; }
+if (!session) { window.location.replace('index.html'); throw 0; }
 const userId = session.user.id;
 
 const _adminLink = document.getElementById('admin-link');
@@ -808,6 +811,7 @@ importConfirmBtn.addEventListener('click', async () => {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
+document.body.style.visibility = '';
 _isOnline = await checkOnline();
 if (!_isOnline) {
   showOfflineBanner();

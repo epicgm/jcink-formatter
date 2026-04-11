@@ -7,10 +7,13 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
+// Hide immediately — revealed only after admin role confirmed, preventing flash.
+document.body.style.visibility = 'hidden';
+
 // ── Auth + admin guard ────────────────────────────────────────────────────────
 
 const { data: { session } } = await supabase.auth.getSession();
-if (!session) { window.location.href = 'index.html'; }
+if (!session) { window.location.replace('index.html'); throw 0; }
 const userId = session.user.id;
 
 const { data: selfProfile } = await supabase
@@ -20,7 +23,7 @@ const { data: selfProfile } = await supabase
   .single();
 
 if (selfProfile?.role !== 'admin') {
-  window.location.href = 'home.html';
+  window.location.replace('home.html'); throw 0;
 }
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
@@ -407,6 +410,7 @@ exportAllBtn.addEventListener('click', async () => {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
+document.body.style.visibility = '';
 await loadUsers();
 
 // Pre-fetch queue count for badge

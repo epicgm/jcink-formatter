@@ -15,10 +15,13 @@ import {
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
+// Hide immediately — revealed only after session confirmed, preventing flash.
+document.body.style.visibility = 'hidden';
+
 // ── Auth guard + role ─────────────────────────────────────────────────────────
 
 const { data: { session } } = await supabase.auth.getSession();
-if (!session) { window.location.href = 'index.html'; }
+if (!session) { window.location.replace('index.html'); throw 0; }
 const userId = session.user.id;
 
 // Show Admin nav link for admin users
@@ -295,6 +298,7 @@ drawerClose.addEventListener('click', closeDrawer);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
+document.body.style.visibility = '';
 _isOnline = await checkOnline();
 if (!_isOnline) {
   showOfflineBanner();
