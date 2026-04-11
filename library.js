@@ -795,7 +795,7 @@ importConfirmBtn.addEventListener('click', async () => {
     _importData = null;
     await loadMyLibrary();
   } catch (err) {
-    alert(`Import failed: ${err.message}`);
+    alert('Import failed. Make sure the file is a valid inkform export.');
   } finally {
     importConfirmBtn.disabled = false;
     importConfirmBtn.textContent = 'Import';
@@ -815,3 +815,9 @@ if (!_isOnline) {
   });
 }
 await loadMyLibrary();
+
+// Auto-trigger import if navigated here from onboarding with ?import=1
+if (new URLSearchParams(window.location.search).get('import') === '1') {
+  history.replaceState({}, '', window.location.pathname);
+  importFileIn.click();
+}

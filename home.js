@@ -23,17 +23,24 @@ const userId = session.user.id;
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 
-const charSelect    = document.getElementById('character-select');
-const tmplSelect    = document.getElementById('template-select');
-const rawInput      = document.getElementById('raw-input');
-const outputEl      = document.getElementById('formatted-output');
-const copyBtn       = document.getElementById('copy-btn');
-const logoutBtn     = document.getElementById('logout-btn');
-const charStatus    = document.getElementById('char-status');
-const drawerToggle  = document.getElementById('drawer-toggle');
-const drawerClose   = document.getElementById('drawer-close');
-const builderDrawer = document.getElementById('builder-drawer');
-const drawerBody    = document.getElementById('builder-drawer-body');
+const charSelect      = document.getElementById('character-select');
+const tmplSelect      = document.getElementById('template-select');
+const rawInput        = document.getElementById('raw-input');
+const outputEl        = document.getElementById('formatted-output');
+const copyBtn         = document.getElementById('copy-btn');
+const logoutBtn       = document.getElementById('logout-btn');
+const charStatus      = document.getElementById('char-status');
+const drawerToggle    = document.getElementById('drawer-toggle');
+const drawerClose     = document.getElementById('drawer-close');
+const builderDrawer   = document.getElementById('builder-drawer');
+const drawerBody      = document.getElementById('builder-drawer-body');
+const formatterControls = document.getElementById('formatter-controls');
+const formatterMain   = document.getElementById('formatter-main');
+const onboarding      = document.getElementById('onboarding');
+const paneTabWrite    = document.getElementById('pane-tab-write');
+const paneTabPreview  = document.getElementById('pane-tab-preview');
+const paneInput       = document.querySelector('.pane--input');
+const paneOutput      = document.querySelector('.pane--output');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -64,11 +71,14 @@ async function loadCharacters() {
 
   let chars;
   if (_isOnline) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('characters')
       .select('id, name')
       .eq('user_id', userId)
       .order('name');
+    if (error) {
+      charStatus.textContent = 'Having trouble connecting. Your work is saved locally.';
+    }
     chars = data ?? cacheRead(CKEY_CHARS(userId)) ?? [];
     if (data) cacheWrite(CKEY_CHARS(userId), chars);
   } else {
@@ -77,16 +87,26 @@ async function loadCharacters() {
 
   charSelect.innerHTML = '<option value="">— Select character —</option>';
 
+  // Show onboarding for brand-new users; show formatter for everyone else
   if (chars.length === 0) {
-    charStatus.textContent = 'No characters yet';
-  } else {
+    onboarding.hidden = false;
+    formatterControls.hidden = true;
+    formatterMain.hidden = true;
     charStatus.textContent = '';
-    for (const c of chars) {
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = c.name;
-      charSelect.appendChild(opt);
-    }
+    charSelect.disabled = false;
+    return;
+  }
+
+  onboarding.hidden = true;
+  formatterControls.hidden = false;
+  formatterMain.hidden = false;
+
+  charStatus.textContent = '';
+  for (const c of chars) {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name;
+    charSelect.appendChild(opt);
   }
 
   charSelect.disabled = false;
@@ -200,7 +220,29 @@ copyBtn.addEventListener('click', async () => {
       copyBtn.textContent = 'Copy';
       copyBtn.classList.remove('btn--copied');
     }, 2000);
+  } else {
+    copyBtn.textContent = 'Copy failed';
+    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
   }
+});
+
+// ── Mobile pane tabs ──────────────────────────────────────────────────────────
+
+function activatePaneTab(active) {
+  const isWrite = active === 'input';
+  paneTabWrite.classList.toggle('active', isWrite);
+  paneTabWrite.setAttribute('aria-pressed', String(isWrite));
+  paneTabPreview.classList.toggle('active', !isWrite);
+  paneTabPreview.setAttribute('aria-pressed', String(!isWrite));
+  paneInput.classList.toggle('pane--mobile-hidden', !isWrite);
+  paneOutput.classList.toggle('pane--mobile-hidden', isWrite);
+}
+
+paneTabWrite.addEventListener('click', () => activatePaneTab('input'));
+paneTabPreview.addEventListener('click', () => {
+  activatePaneTab('output');
+  // Auto-switch to preview when user clicks — scroll output into view on mobile
+  paneOutput.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 logoutBtn.addEventListener('click', async () => {

@@ -94,6 +94,41 @@
     </div>
   </nav>
 
+  <!-- ── Onboarding (shown when user has zero characters) ─── -->
+  <div id="onboarding" class="onboarding-wrap" hidden>
+    <div class="onboarding-card">
+      <p class="onboarding-eyebrow">Welcome to inkform</p>
+      <h1 class="onboarding-title">Let's set up your first character.</h1>
+      <p class="onboarding-subtitle">Pick whichever sounds right and we'll walk you through it.</p>
+      <div class="onboarding-options">
+        <a href="editor.html" class="onboarding-option">
+          <span class="onboarding-option-icon" aria-hidden="true">✨</span>
+          <div class="onboarding-option-body">
+            <strong>I have an existing Jcink template</strong>
+            <p>Paste your template and we'll read the formatting rules automatically.</p>
+          </div>
+          <span class="onboarding-option-arrow" aria-hidden="true">→</span>
+        </a>
+        <a href="manage.html?welcome=1" class="onboarding-option">
+          <span class="onboarding-option-icon" aria-hidden="true">✏️</span>
+          <div class="onboarding-option-body">
+            <strong>I want to build my character step by step</strong>
+            <p>Enter your character name and set up formatting rules yourself.</p>
+          </div>
+          <span class="onboarding-option-arrow" aria-hidden="true">→</span>
+        </a>
+        <a href="library.html?import=1" class="onboarding-option">
+          <span class="onboarding-option-icon" aria-hidden="true">📥</span>
+          <div class="onboarding-option-body">
+            <strong>Someone shared a character file with me</strong>
+            <p>Upload a .json export file to import characters straight away.</p>
+          </div>
+          <span class="onboarding-option-arrow" aria-hidden="true">→</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Character / template selectors ────────────────────── -->
   <div class="formatter-controls" id="formatter-controls">
     <div class="field">
@@ -116,7 +151,14 @@
   </div>
 
   <!-- ── Formatter panes ────────────────────────────────────── -->
-  <div class="formatter-main">
+  <div class="formatter-main" id="formatter-main">
+
+    <!-- Mobile-only pane tab strip -->
+    <div class="pane-tabs" id="pane-tabs" aria-label="View switcher">
+      <button class="pane-tab active" id="pane-tab-write" data-pane="input" aria-pressed="true">✍ Write</button>
+      <button class="pane-tab" id="pane-tab-preview" data-pane="output" aria-pressed="false">👁 Preview</button>
+    </div>
+
     <div class="formatter-grid">
 
       <div class="pane pane--input">

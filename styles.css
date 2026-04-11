@@ -1668,6 +1668,181 @@ input:focus { outline: none; border-color: var(--color-primary); }
   font-weight: 600;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PHASE 8 — Onboarding, mobile pane tabs, mobile polish
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Onboarding screen ──────────────────────────────────────────────────────── */
+.onboarding-wrap {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-xl) var(--space-lg);
+  position: relative;
+  z-index: 1;
+  -webkit-overflow-scrolling: touch;
+}
+
+.onboarding-card {
+  width: 100%;
+  max-width: 560px;
+}
+
+.onboarding-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.onboarding-title {
+  font-size: clamp(20px, 5vw, 28px);
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-bottom: var(--space-sm);
+}
+
+.onboarding-subtitle {
+  font-size: 14px;
+  color: var(--color-muted);
+  margin-bottom: var(--space-xl);
+  line-height: 1.5;
+}
+
+.onboarding-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.onboarding-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--color-text);
+  min-height: 72px;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+
+.onboarding-option:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--bg-accent) 70%, var(--bg-surface));
+  transform: translateY(-1px);
+}
+
+.onboarding-option:active { transform: scale(0.99); }
+
+.onboarding-option-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  width: 40px;
+  text-align: center;
+}
+
+.onboarding-option-body {
+  flex: 1;
+}
+
+.onboarding-option-body strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 3px;
+}
+
+.onboarding-option-body p {
+  font-size: 12px;
+  color: var(--color-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.onboarding-option-arrow {
+  font-size: 16px;
+  color: var(--color-muted);
+  flex-shrink: 0;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.onboarding-option:hover .onboarding-option-arrow {
+  color: var(--color-primary);
+  transform: translateX(3px);
+}
+
+/* ── Mobile pane tab strip (hidden on desktop) ──────────────────────────────── */
+.pane-tabs {
+  display: flex;
+  background: var(--bg-page);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pane-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px var(--space-md);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--color-muted);
+  cursor: pointer;
+  min-height: var(--tap-min);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.pane-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* On mobile, use pane hidden class to show one at a time */
+@media (max-width: 639px) {
+  .pane--mobile-hidden {
+    display: none !important;
+  }
+
+  /* When only one pane is shown, give it full height */
+  .pane--input:not(.pane--mobile-hidden),
+  .pane--output:not(.pane--mobile-hidden) {
+    flex: 1;
+  }
+}
+
+/* On desktop, hide the tab strip — both panes always visible */
+@media (min-width: 640px) {
+  .pane-tabs { display: none; }
+  .pane--mobile-hidden { display: flex !important; }
+}
+
+/* ── Copy button: raise to 44px tap minimum ─────────────────────────────────── */
+.btn-copy {
+  min-height: var(--tap-min);
+  padding: 10px 18px;
+}
+
+/* ── Navbar: tighten on small screens ───────────────────────────────────────── */
+@media (max-width: 479px) {
+  .navbar { padding: 10px 14px; }
+  .nav-actions { gap: 4px; }
+  .btn-ghost { padding: 6px 10px; font-size: 12px; }
+  .nav-logo { font-size: 15px; }
+  .formatter-controls { padding: var(--space-sm) var(--space-md); gap: var(--space-sm); }
+}
+
 /* ── Tablet+: side-by-side panes (640px) ───────────────────────────────────── */
 @media (min-width: 640px) {
   .login-card { padding: 44px 40px; }

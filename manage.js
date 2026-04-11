@@ -190,31 +190,36 @@ charForm.addEventListener('submit', async e => {
     return;
   }
 
-  if (_editCharId) {
-    await supabase.from('characters').update({ name }).eq('id', _editCharId);
-  } else {
-    // Insert new character
-    const { data: newChars } = await supabase
-      .from('characters')
-      .insert({ user_id: userId, name })
-      .select('id');
+  try {
+    if (_editCharId) {
+      const { error } = await supabase.from('characters').update({ name }).eq('id', _editCharId);
+      if (error) throw error;
+    } else {
+      const { data: newChars, error: insertErr } = await supabase
+        .from('characters')
+        .insert({ user_id: userId, name })
+        .select('id');
+      if (insertErr) throw insertErr;
 
-    // Forwardfill: if any blocks have auto_add_new_chars=true, create a Default template
-    if (newChars?.length) {
-      const { data: autoBlocks } = await supabase
-        .from('user_library')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('auto_add_new_chars', true);
+      if (newChars?.length) {
+        const { data: autoBlocks } = await supabase
+          .from('user_library')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('auto_add_new_chars', true);
 
-      if (autoBlocks?.length) {
-        await supabase.from('templates').insert({
-          character_id:     newChars[0].id,
-          name:             'Default',
-          active_block_ids: autoBlocks.map(b => b.id),
-        });
+        if (autoBlocks?.length) {
+          await supabase.from('templates').insert({
+            character_id:     newChars[0].id,
+            name:             'Default',
+            active_block_ids: autoBlocks.map(b => b.id),
+          });
+        }
       }
     }
+  } catch {
+    alert('Could not save that change. Try again or export a backup from the Library page.');
+    return;
   }
 
   charDialog.close();
@@ -387,10 +392,17 @@ tmplForm.addEventListener('submit', async e => {
     active_block_ids: activeIds.length ? activeIds : null,
   };
 
-  if (_editTmplId) {
-    await supabase.from('templates').update(payload).eq('id', _editTmplId);
-  } else {
-    await supabase.from('templates').insert({ ...payload, character_id: tmplCharSel.value });
+  try {
+    if (_editTmplId) {
+      const { error } = await supabase.from('templates').update(payload).eq('id', _editTmplId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from('templates').insert({ ...payload, character_id: tmplCharSel.value });
+      if (error) throw error;
+    }
+  } catch {
+    alert('Could not save that change. Try again or export a backup from the Library page.');
+    return;
   }
 
   tmplDialog.close();
@@ -494,6 +506,21 @@ function makeItemRow(label, actions) {
   return row;
 }
 
+// ── Welcome onboarding shortcut ───────────────────────────────────────────────
+// manage.html?welcome=1 — auto-open the New Character dialog
+
+function handleWelcomeParam() {
+  if (new URLSearchParams(window.location.search).get('welcome') === '1') {
+    _editCharId = null;
+    charDlgTitle.textContent = 'Create your first character';
+    charNameIn.value = '';
+    charDialog.showModal();
+    charNameIn.focus();
+    // Clean URL without reload
+    history.replaceState({}, '', window.location.pathname);
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 _isOnline = await checkOnline();
@@ -509,3 +536,4 @@ if (!_isOnline) {
 }
 await loadCharacters();
 await loadLibrary();
+handleWelcomeParam();

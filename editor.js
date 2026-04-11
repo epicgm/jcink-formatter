@@ -91,8 +91,8 @@ extractBtn.addEventListener('click', async () => {
 
     renderResults(data);
 
-  } catch (err) {
-    extractError.textContent = `Extraction failed: ${err.message}`;
+  } catch {
+    extractError.textContent = 'Could not read that template. Try building manually instead — fill in the fields below and skip the extraction step.';
     extractError.classList.add('visible');
   } finally {
     spinner.hidden = true;
@@ -399,8 +399,8 @@ saveBtn.addEventListener('click', async () => {
     // Redirect to manage after short delay
     setTimeout(() => { window.location.href = 'manage.html'; }, 1500);
 
-  } catch (err) {
-    saveStatus.textContent = `Error: ${err.message}`;
+  } catch {
+    saveStatus.textContent = 'Could not save that change. Try again or export a backup from the Library page.';
     saveBtn.disabled = false;
     saveBtn.textContent = 'Create Character & Template';
   }
