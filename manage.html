@@ -108,7 +108,10 @@
     <div id="tab-characters" class="tab-panel" role="tabpanel">
       <div class="manage-header">
         <h2 class="manage-title">Characters</h2>
-        <button id="new-char-btn" class="btn-primary">+ New</button>
+        <div style="display:flex;gap:var(--space-sm);">
+          <a href="editor.html" class="btn-secondary">Extract from template</a>
+          <button id="new-char-btn" class="btn-primary">+ New</button>
+        </div>
       </div>
       <div id="char-list" class="item-list"></div>
       <p id="char-empty" class="empty-state" hidden>No characters yet. Add one to get started.</p>

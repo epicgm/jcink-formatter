@@ -1031,6 +1031,319 @@ input:focus { outline: none; border-color: var(--color-primary); }
   margin-bottom: var(--space-md);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   EDITOR PAGE — NEW CHARACTER FLOW
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page scroll layout ─────────────────────────────────────────────────────── */
+.editor-scroll {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+  -webkit-overflow-scrolling: touch;
+}
+
+.editor-container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-lg) 80px;
+}
+
+/* ── Page header ────────────────────────────────────────────────────────────── */
+.editor-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-xs);
+}
+.editor-subtitle {
+  font-size: 13px;
+  color: var(--color-muted);
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+.editor-header {
+  margin-bottom: var(--space-xl);
+}
+
+/* ── Section ────────────────────────────────────────────────────────────────── */
+.editor-section {
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg) var(--space-xl);
+  margin-bottom: var(--space-lg);
+}
+
+.section-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-md);
+}
+
+.section-hint {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin-bottom: var(--space-md);
+  line-height: 1.5;
+}
+
+.subsection-heading {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-label);
+  margin: var(--space-lg) 0 var(--space-sm);
+}
+
+/* ── Two-column fields ──────────────────────────────────────────────────────── */
+.editor-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+@media (max-width: 480px) {
+  .editor-fields { grid-template-columns: 1fr; }
+}
+
+/* ── Extract row ────────────────────────────────────────────────────────────── */
+.extract-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+/* ── Spinner ────────────────────────────────────────────────────────────────── */
+.spinner-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+}
+
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+.spinner-label {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Result cards grid ──────────────────────────────────────────────────────── */
+.result-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* ── Individual result card ─────────────────────────────────────────────────── */
+.result-card {
+  background: var(--bg-page);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.result-card.card--confirmed {
+  border-color: var(--color-teal);
+  background: color-mix(in srgb, var(--color-teal) 5%, var(--bg-page));
+}
+.result-card.card--skipped {
+  opacity: 0.45;
+}
+
+.result-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Type tags ──────────────────────────────────────────────────────────────── */
+.type-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+.type-tag--shell     { background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary); }
+.type-tag--dialogue  { background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary); }
+.type-tag--thought   { background: color-mix(in srgb, var(--color-teal)    12%, transparent); color: var(--color-teal); }
+.type-tag--action    { background: color-mix(in srgb, #9B59B6 12%, transparent); color: #9B59B6; }
+.type-tag--narration { background: color-mix(in srgb, #E67E22 12%, transparent); color: #E67E22; }
+.type-tag--other     { background: color-mix(in srgb, var(--color-muted)   12%, transparent); color: var(--color-muted); }
+
+.rule-type-select {
+  font-size: 12px;
+  min-height: 32px;
+  padding: 4px 28px 4px 10px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+/* ── Card sections ──────────────────────────────────────────────────────────── */
+.result-card-preview {
+  max-height: 160px;
+  overflow-y: auto;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.result-card-markers {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.marker-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
+}
+.marker-row .field-label {
+  width: 64px;
+  flex-shrink: 0;
+}
+
+.marker-code {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  background: var(--bg-accent);
+  border: var(--border-width) solid var(--border);
+  border-radius: 4px;
+  padding: 2px 7px;
+  color: var(--color-text);
+  word-break: break-all;
+}
+
+.marker-badges {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+  margin-top: var(--space-xs);
+}
+
+.marker-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--badge-color, var(--bg-accent));
+  color: #fff;
+  border: none;
+}
+.marker-badge[style] { /* color badge — make text readable */ }
+
+.result-card-sample {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.sample-output {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  min-height: 36px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  padding: 8px 10px;
+}
+
+.result-card-raw {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.result-card-raw summary { cursor: pointer; }
+.result-card-raw summary:hover { color: var(--color-primary); }
+
+.raw-code {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  background: var(--bg-accent);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  margin-top: var(--space-sm);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 180px;
+  overflow-y: auto;
+  color: var(--color-text);
+}
+
+/* ── Card footer ────────────────────────────────────────────────────────────── */
+.result-card-footer {
+  display: flex;
+  gap: var(--space-sm);
+  padding: 10px 14px;
+}
+
+/* ── Unknown patterns ───────────────────────────────────────────────────────── */
+.unknown-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.unknown-item {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--color-danger) 6%, var(--bg-surface));
+  border: var(--border-width) solid color-mix(in srgb, var(--color-danger) 25%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  color: var(--color-text);
+  word-break: break-all;
+}
+
+/* ── Save row ───────────────────────────────────────────────────────────────── */
+.save-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.save-btn { min-width: 220px; }
+
+.save-status {
+  font-size: 13px;
+  color: var(--color-muted);
+  flex: 1;
+}
+
 /* ── Tablet+: side-by-side panes (640px) ───────────────────────────────────── */
 @media (min-width: 640px) {
   .login-card { padding: 44px 40px; }
