@@ -96,7 +96,7 @@
         <p>Sign in to continue</p>
       </div>
 
-      <form id="login-form" novalidate>
+      <div id="login-form">
         <div class="field">
           <label class="field-label" for="username">Username</label>
           <input
@@ -106,7 +106,6 @@
             name="username"
             placeholder="Enter your username"
             autocomplete="username"
-            required
           />
         </div>
 
@@ -119,16 +118,15 @@
             name="password"
             placeholder="Enter your password"
             autocomplete="current-password"
-            required
           />
         </div>
 
         <div id="error-message" class="error-message" role="alert"></div>
 
-        <button type="submit" id="submit-btn" class="btn-primary full-width">
+        <button type="button" id="login-btn" class="btn-primary full-width">
           Sign In
         </button>
-      </form>
+      </div>
     </div>
 
     <button id="theme-toggle" class="btn-ghost login-theme-toggle" aria-label="Toggle dark mode">

@@ -7,18 +7,27 @@ const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 const loginForm = document.getElementById('login-form');
 
 if (loginForm) {
+  // Safety net: if credentials somehow ended up in the URL, scrub them
+  // immediately before the user or any history-sniffing tool can read them.
+  if (window.location.search) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+
   // Redirect to home if already signed in
   supabase.auth.getSession().then(({ data: { session } }) => {
     if (session) window.location.href = 'home.html';
   });
 
-  loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
+  async function attemptLogin() {
     const emailInput    = document.getElementById('username');
     const passwordInput = document.getElementById('password');
     const errorEl       = document.getElementById('error-message');
-    const submitBtn     = document.getElementById('submit-btn');
+    const submitBtn     = document.getElementById('login-btn');
+
+    // Ensure credentials never appear in the URL (belt-and-suspenders)
+    if (window.location.search) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
 
     errorEl.textContent = '';
     errorEl.classList.remove('visible');
@@ -84,5 +93,17 @@ if (loginForm) {
     localStorage.setItem('inkform_role', role);
 
     window.location.href = 'home.html';
+  }
+
+  // Primary trigger: click the Sign In button
+  document.getElementById('login-btn').addEventListener('click', attemptLogin);
+
+  // Convenience: pressing Enter in either field triggers login
+  // (no <form> means no native submit, so we wire it manually)
+  document.getElementById('username').addEventListener('keydown', e => {
+    if (e.key === 'Enter') attemptLogin();
+  });
+  document.getElementById('password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') attemptLogin();
   });
 }
