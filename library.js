@@ -1,0 +1,489 @@
+/**
+ * library.js — My Library and Board Library management
+ * Requires config.js loaded first (sets window.SUPABASE_URL / SUPABASE_ANON_KEY)
+ */
+import { createClient }     from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { mountBlockBuilder } from './block-builder.js';
+
+const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+// ── Auth guard ────────────────────────────────────────────────────────────────
+
+const { data: { session } } = await supabase.auth.getSession();
+if (!session) { window.location.href = 'index.html'; }
+const userId = session.user.id;
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+
+// Tabs
+const tabBtns         = document.querySelectorAll('.tab-btn');
+
+// My Library
+const newBlockToggle  = document.getElementById('new-block-toggle');
+const builderWrap     = document.getElementById('block-builder-wrap');
+const myBlocksGrid    = document.getElementById('my-blocks-grid');
+const myEmpty         = document.getElementById('my-empty');
+
+// Board Library
+const boardBlocksGrid = document.getElementById('board-blocks-grid');
+const boardEmpty      = document.getElementById('board-empty');
+
+// Global dialog
+const globalDialog    = document.getElementById('global-dialog');
+const globalForm      = document.getElementById('global-form');
+const globalTriggerEl = document.getElementById('global-dialog-trigger');
+const globalCharsWrap = document.getElementById('global-chars-wrap');
+const globalCharsLoad = document.getElementById('global-chars-loading');
+const backfillRadios  = () => [...globalForm.querySelectorAll('input[name=backfill]')];
+
+// Edit dialog
+const editDialog      = document.getElementById('edit-dialog');
+const editForm        = document.getElementById('edit-form');
+const editTriggerIn   = document.getElementById('edit-trigger');
+const editHtmlIn      = document.getElementById('edit-html');
+
+// Navbar
+const themeToggle     = document.getElementById('theme-toggle');
+const logoutBtn       = document.getElementById('logout-btn');
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let _globalBlock  = null;  // block being made global
+let _editBlockId  = null;
+let _builderOpen  = false;
+
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+
+themeToggle.addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('inkform-theme', next);
+  themeToggle.querySelector('.theme-toggle-icon').textContent = next === 'dark' ? '☀' : '☽';
+});
+if (document.documentElement.getAttribute('data-theme') === 'dark') {
+  themeToggle.querySelector('.theme-toggle-icon').textContent = '☀';
+}
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+
+logoutBtn.addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  window.location.href = 'index.html';
+});
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabBtns.forEach(b => {
+      b.classList.toggle('active', b === btn);
+      b.setAttribute('aria-selected', String(b === btn));
+    });
+    const target = btn.dataset.tab;
+    document.querySelectorAll('.tab-panel').forEach(p => {
+      p.hidden = p.id !== `tab-${target}`;
+    });
+    if (target === 'board') loadBoardLibrary();
+  });
+});
+
+// ── Dialog helpers ────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.dialog-cancel').forEach(btn => {
+  btn.addEventListener('click', () => btn.closest('dialog').close());
+});
+document.querySelectorAll('.manage-dialog').forEach(dlg => {
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+});
+
+// ── Inline block builder ──────────────────────────────────────────────────────
+
+newBlockToggle.addEventListener('click', () => {
+  _builderOpen = !_builderOpen;
+  builderWrap.hidden = !_builderOpen;
+  newBlockToggle.textContent = _builderOpen ? '✕ Close' : '+ New Block';
+  if (_builderOpen) builderWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+mountBlockBuilder(builderWrap, {
+  onSave: async ({ trigger, replacement_html }) => {
+    const { error } = await supabase
+      .from('user_library')
+      .insert({ user_id: userId, trigger, replacement_html });
+    if (error) throw error;
+    await loadMyLibrary();
+    // Collapse builder after save
+    _builderOpen = false;
+    builderWrap.hidden = true;
+    newBlockToggle.textContent = '+ New Block';
+  },
+});
+
+// ── MY LIBRARY ────────────────────────────────────────────────────────────────
+
+async function loadMyLibrary() {
+  const { data } = await supabase
+    .from('user_library')
+    .select('id, trigger, replacement_html, is_global, auto_add_new_chars, auto_add_new_templates, forked_from, board_source_id')
+    .eq('user_id', userId)
+    .order('trigger');
+
+  const blocks = data ?? [];
+  myEmpty.hidden = blocks.length > 0;
+  myBlocksGrid.innerHTML = '';
+
+  for (const b of blocks) {
+    myBlocksGrid.appendChild(makeMyCard(b));
+  }
+}
+
+function makeMyCard(b) {
+  const card = document.createElement('div');
+  card.className = 'block-card';
+  card.dataset.id = b.id;
+
+  // Header: trigger + global chip
+  const header = document.createElement('div');
+  header.className = 'block-card-header';
+
+  const trigger = document.createElement('span');
+  trigger.className = 'block-card-trigger';
+  trigger.textContent = `::${b.trigger}::`;
+  header.appendChild(trigger);
+
+  const globalChip = document.createElement('button');
+  globalChip.type = 'button';
+  globalChip.className = `chip block-global-chip${b.is_global ? ' active' : ''}`;
+  globalChip.textContent = b.is_global ? 'Global' : 'Personal';
+  globalChip.title = b.is_global ? 'Click to remove global status' : 'Click to mark as global';
+  globalChip.addEventListener('click', () => openGlobalDialog(b));
+  header.appendChild(globalChip);
+
+  card.appendChild(header);
+
+  // Preview
+  const preview = document.createElement('div');
+  preview.className = 'block-card-preview output-area';
+  // Renders user's own HTML intentionally
+  preview.innerHTML = b.replacement_html || '<span class="output-placeholder">No HTML set.</span>';
+  card.appendChild(preview);
+
+  // Source badge (for board copies)
+  if (b.board_source_id) {
+    const badge = document.createElement('p');
+    badge.className = 'block-card-badge';
+    badge.textContent = 'Locked board copy — receives updates';
+    card.appendChild(badge);
+  } else if (b.forked_from) {
+    const badge = document.createElement('p');
+    badge.className = 'block-card-badge';
+    badge.textContent = 'Forked from board';
+    card.appendChild(badge);
+  }
+
+  // Footer: actions
+  const footer = document.createElement('div');
+  footer.className = 'block-card-footer';
+
+  const editBtn = makeBtn('Edit', 'btn-sm btn-ghost', () => openEditDialog(b));
+  const delBtn  = makeBtn('Delete', 'btn-sm btn-danger', () => deleteBlock(b.id, b.trigger));
+  footer.appendChild(editBtn);
+  footer.appendChild(delBtn);
+
+  // "Suggest to board" — only for personal blocks (not board copies/forks)
+  if (!b.board_source_id && !b.forked_from) {
+    const suggestBtn = makeBtn('Suggest to board', 'btn-sm btn-ghost', () => suggestToBoard(b));
+    footer.appendChild(suggestBtn);
+  }
+
+  card.appendChild(footer);
+  return card;
+}
+
+// ── Global dialog ─────────────────────────────────────────────────────────────
+
+async function openGlobalDialog(b) {
+  // If already global, just toggle off immediately
+  if (b.is_global) {
+    if (!confirm(`Remove global status from ::${b.trigger}::?`)) return;
+    await supabase.from('user_library')
+      .update({ is_global: false, auto_add_new_chars: false, auto_add_new_templates: false })
+      .eq('id', b.id);
+    await loadMyLibrary();
+    return;
+  }
+
+  _globalBlock = b;
+  globalTriggerEl.textContent = `::${b.trigger}::`;
+
+  // Reset form
+  globalForm.querySelector('input[name=backfill][value=all]').checked = true;
+  globalForm.querySelector('input[name=autoChars][value=yes]').checked = true;
+  globalForm.querySelector('input[name=autoTmpls][value=yes]').checked = true;
+  globalCharsWrap.hidden = true;
+
+  // Pre-load characters into the checklist
+  await populateGlobalCharList();
+
+  // Show/hide char checklist on radio change
+  backfillRadios().forEach(r => {
+    r.onchange = () => {
+      globalCharsWrap.hidden = r.value !== 'choose' || !r.checked;
+    };
+  });
+
+  globalDialog.showModal();
+}
+
+async function populateGlobalCharList() {
+  const { data } = await supabase
+    .from('characters')
+    .select('id, name')
+    .eq('user_id', userId)
+    .order('name');
+
+  globalCharsWrap.innerHTML = '';
+
+  if (!data?.length) {
+    const p = document.createElement('p');
+    p.className = 'empty-state';
+    p.textContent = 'No characters found.';
+    globalCharsWrap.appendChild(p);
+    return;
+  }
+
+  for (const c of data) {
+    const label = document.createElement('label');
+    label.className = 'block-check-label';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = c.id;
+    cb.checked = true;
+    label.appendChild(cb);
+    label.append(` ${c.name}`);
+    globalCharsWrap.appendChild(label);
+  }
+}
+
+globalForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!_globalBlock) return;
+
+  const backfill     = globalForm.querySelector('input[name=backfill]:checked').value;
+  const autoChars    = globalForm.querySelector('input[name=autoChars]:checked').value === 'yes';
+  const autoTmpls    = globalForm.querySelector('input[name=autoTmpls]:checked').value === 'yes';
+
+  // Update the block
+  const { error } = await supabase
+    .from('user_library')
+    .update({ is_global: true, auto_add_new_chars: autoChars, auto_add_new_templates: autoTmpls })
+    .eq('id', _globalBlock.id);
+  if (error) { alert(error.message); return; }
+
+  // Backfill
+  if (backfill !== 'none') {
+    let charIds;
+
+    if (backfill === 'all') {
+      const { data: chars } = await supabase
+        .from('characters')
+        .select('id')
+        .eq('user_id', userId);
+      charIds = (chars ?? []).map(c => c.id);
+    } else {
+      // "choose" — read checked boxes
+      charIds = [...globalCharsWrap.querySelectorAll('input[type=checkbox]:checked')]
+        .map(cb => cb.value);
+    }
+
+    if (charIds.length) {
+      await backfillBlockToCharacters(_globalBlock.id, charIds);
+    }
+  }
+
+  globalDialog.close();
+  _globalBlock = null;
+  await loadMyLibrary();
+});
+
+async function backfillBlockToCharacters(blockId, charIds) {
+  const { data: tmpls } = await supabase
+    .from('templates')
+    .select('id, active_block_ids')
+    .in('character_id', charIds);
+
+  if (!tmpls?.length) return;
+
+  const updates = tmpls
+    .filter(t => !(t.active_block_ids ?? []).includes(blockId))
+    .map(t => supabase.from('templates').update({
+      active_block_ids: [...(t.active_block_ids ?? []), blockId],
+    }).eq('id', t.id));
+
+  await Promise.all(updates);
+}
+
+// ── Edit dialog ───────────────────────────────────────────────────────────────
+
+function openEditDialog(b) {
+  _editBlockId = b.id;
+  editTriggerIn.value = b.trigger;
+  editHtmlIn.value    = b.replacement_html ?? '';
+  editDialog.showModal();
+  editTriggerIn.focus();
+}
+
+editForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const trigger = editTriggerIn.value.trim();
+  if (!trigger) return;
+
+  await supabase.from('user_library').update({
+    trigger,
+    replacement_html: editHtmlIn.value.trim() || null,
+  }).eq('id', _editBlockId);
+
+  editDialog.close();
+  await loadMyLibrary();
+});
+
+async function deleteBlock(id, trigger) {
+  if (!confirm(`Delete library block "::${trigger}::"?\n\nIt will be removed from all templates that use it.`)) return;
+  await supabase.from('user_library').delete().eq('id', id);
+  await loadMyLibrary();
+}
+
+// ── Suggest to board ──────────────────────────────────────────────────────────
+
+async function suggestToBoard(b) {
+  if (!confirm(`Suggest "::${b.trigger}::" to the board library?\n\nAn admin will review it before it appears publicly.`)) return;
+
+  const { error } = await supabase.from('board_library').insert({
+    trigger:          b.trigger,
+    replacement_html: b.replacement_html,
+    added_by:         userId,
+    status:           'pending',
+  });
+
+  if (error) {
+    alert(`Could not suggest block: ${error.message}`);
+  } else {
+    alert(`"::${b.trigger}::" has been submitted for board review.`);
+  }
+}
+
+// ── BOARD LIBRARY ─────────────────────────────────────────────────────────────
+
+async function loadBoardLibrary() {
+  boardBlocksGrid.innerHTML = '<p class="empty-state">Loading…</p>';
+  boardEmpty.hidden = true;
+
+  const { data } = await supabase
+    .from('board_library')
+    .select('id, trigger, replacement_html, used_by_count')
+    .eq('status', 'published')
+    .order('trigger');
+
+  const blocks = data ?? [];
+  boardBlocksGrid.innerHTML = '';
+  boardEmpty.hidden = blocks.length > 0;
+
+  for (const b of blocks) {
+    boardBlocksGrid.appendChild(makeBoardCard(b));
+  }
+}
+
+function makeBoardCard(b) {
+  const card = document.createElement('div');
+  card.className = 'block-card';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'block-card-header';
+
+  const trigger = document.createElement('span');
+  trigger.className = 'block-card-trigger';
+  trigger.textContent = `::${b.trigger}::`;
+  header.appendChild(trigger);
+
+  if (b.used_by_count > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'chip';
+    badge.style.fontSize = '11px';
+    badge.textContent = `${b.used_by_count} using`;
+    header.appendChild(badge);
+  }
+
+  card.appendChild(header);
+
+  // Preview
+  const preview = document.createElement('div');
+  preview.className = 'block-card-preview output-area';
+  preview.innerHTML = b.replacement_html || '<span class="output-placeholder">No HTML set.</span>';
+  card.appendChild(preview);
+
+  // Footer: Add + Fork
+  const footer = document.createElement('div');
+  footer.className = 'block-card-footer';
+
+  const addBtn  = makeBtn('Add to my library',  'btn-sm btn-secondary', () => addFromBoard(b));
+  const forkBtn = makeBtn('Fork to my library', 'btn-sm btn-ghost',     () => forkFromBoard(b));
+  footer.appendChild(addBtn);
+  footer.appendChild(forkBtn);
+  card.appendChild(footer);
+
+  return card;
+}
+
+async function addFromBoard(b) {
+  // Locked copy — tracks board version; forked_from stays null per spec
+  const { error } = await supabase.from('user_library').insert({
+    user_id:          userId,
+    trigger:          b.trigger,
+    replacement_html: b.replacement_html,
+    board_source_id:  b.id,   // tracks the board block for future updates
+    forked_from:      null,
+  });
+
+  if (error) { alert(error.message); return; }
+
+  // Increment board used_by_count
+  await supabase.rpc('board_library_increment_used_by', { block_id: b.id });
+
+  alert(`"::${b.trigger}::" added to your library as a locked board copy.`);
+  await loadBoardLibrary();
+}
+
+async function forkFromBoard(b) {
+  // Personal editable copy — forked_from = board block id per spec
+  const { error } = await supabase.from('user_library').insert({
+    user_id:          userId,
+    trigger:          b.trigger,
+    replacement_html: b.replacement_html,
+    board_source_id:  null,
+    forked_from:      b.id,   // records which board block this was forked from
+  });
+
+  if (error) { alert(error.message); return; }
+
+  await supabase.rpc('board_library_increment_used_by', { block_id: b.id });
+
+  alert(`"::${b.trigger}::" forked to your library. You can edit it freely.`);
+  await loadBoardLibrary();
+}
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+function makeBtn(label, cls, fn) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = cls;
+  btn.textContent = label;
+  btn.addEventListener('click', fn);
+  return btn;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+await loadMyLibrary();

@@ -2,8 +2,9 @@
  * home.js — Main formatter page logic
  * Requires config.js loaded first (sets window.SUPABASE_URL / SUPABASE_ANON_KEY)
  */
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { formatPost } from './parser.js';
+import { createClient }     from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { formatPost }       from './parser.js';
+import { mountBlockBuilder } from './block-builder.js';
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
@@ -15,13 +16,17 @@ const userId = session.user.id;
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 
-const charSelect  = document.getElementById('character-select');
-const tmplSelect  = document.getElementById('template-select');
-const rawInput    = document.getElementById('raw-input');
-const outputEl    = document.getElementById('formatted-output');
-const copyBtn     = document.getElementById('copy-btn');
-const logoutBtn   = document.getElementById('logout-btn');
-const charStatus  = document.getElementById('char-status');
+const charSelect    = document.getElementById('character-select');
+const tmplSelect    = document.getElementById('template-select');
+const rawInput      = document.getElementById('raw-input');
+const outputEl      = document.getElementById('formatted-output');
+const copyBtn       = document.getElementById('copy-btn');
+const logoutBtn     = document.getElementById('logout-btn');
+const charStatus    = document.getElementById('char-status');
+const drawerToggle  = document.getElementById('drawer-toggle');
+const drawerClose   = document.getElementById('drawer-close');
+const builderDrawer = document.getElementById('builder-drawer');
+const drawerBody    = document.getElementById('builder-drawer-body');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -183,6 +188,42 @@ logoutBtn.addEventListener('click', async () => {
   await supabase.auth.signOut();
   window.location.href = 'index.html';
 });
+
+// ── Block builder drawer ──────────────────────────────────────────────────────
+
+let _drawerMounted = false;
+
+function openDrawer() {
+  builderDrawer.hidden = false;
+  drawerToggle.textContent = '✕ Close Builder';
+  if (!_drawerMounted) {
+    mountBlockBuilder(drawerBody, {
+      onSave: async ({ trigger, replacement_html }) => {
+        const { error } = await supabase
+          .from('user_library')
+          .insert({ user_id: userId, trigger, replacement_html });
+        if (error) throw error;
+        // Reload replacements if the current template uses auto-blocks
+        if (currentTmpl) {
+          currentRepls = await loadReplacements(currentTmpl);
+          updateOutput();
+        }
+      },
+    });
+    _drawerMounted = true;
+  }
+  builderDrawer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeDrawer() {
+  builderDrawer.hidden = true;
+  drawerToggle.textContent = '+ Block Builder';
+}
+
+drawerToggle.addEventListener('click', () => {
+  builderDrawer.hidden ? openDrawer() : closeDrawer();
+});
+drawerClose.addEventListener('click', closeDrawer);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 

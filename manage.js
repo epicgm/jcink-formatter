@@ -171,7 +171,28 @@ charForm.addEventListener('submit', async e => {
   if (_editCharId) {
     await supabase.from('characters').update({ name }).eq('id', _editCharId);
   } else {
-    await supabase.from('characters').insert({ user_id: userId, name });
+    // Insert new character
+    const { data: newChars } = await supabase
+      .from('characters')
+      .insert({ user_id: userId, name })
+      .select('id');
+
+    // Forwardfill: if any blocks have auto_add_new_chars=true, create a Default template
+    if (newChars?.length) {
+      const { data: autoBlocks } = await supabase
+        .from('user_library')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('auto_add_new_chars', true);
+
+      if (autoBlocks?.length) {
+        await supabase.from('templates').insert({
+          character_id:     newChars[0].id,
+          name:             'Default',
+          active_block_ids: autoBlocks.map(b => b.id),
+        });
+      }
+    }
   }
 
   charDialog.close();
@@ -292,8 +313,25 @@ tmplForm.addEventListener('submit', async e => {
   if (tmplThkOpen.value.trim())  rules.thoughtOpen   = tmplThkOpen.value.trim();
   if (tmplThkClose.value.trim()) rules.thoughtClose  = tmplThkClose.value.trim();
 
-  const activeIds = [...tmplBlocksList.querySelectorAll('input[type=checkbox]:checked')]
+  // Explicitly checked blocks from the dialog
+  const checkedIds = [...tmplBlocksList.querySelectorAll('input[type=checkbox]:checked')]
     .map(cb => cb.value);
+
+  let activeIds = checkedIds;
+
+  // Forwardfill: merge in auto_add_new_templates blocks for new templates
+  if (!_editTmplId) {
+    const { data: autoBlocks } = await supabase
+      .from('user_library')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('auto_add_new_templates', true);
+
+    if (autoBlocks?.length) {
+      const autoIds = autoBlocks.map(b => b.id);
+      activeIds = [...new Set([...checkedIds, ...autoIds])];
+    }
+  }
 
   const payload = {
     name,

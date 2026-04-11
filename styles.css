@@ -786,6 +786,251 @@ input:focus { outline: none; border-color: var(--color-primary); }
   font-size: 12px !important;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   LIBRARY PAGE — BLOCK CARDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Responsive block grid ──────────────────────────────────────────────────── */
+.blocks-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+}
+
+@media (min-width: 560px) {
+  .blocks-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 900px) {
+  .blocks-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── Block card ─────────────────────────────────────────────────────────────── */
+.block-card {
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.block-card:hover { border-color: var(--color-primary); }
+
+.block-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.block-card-trigger {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Global toggle chip on a card */
+.block-global-chip {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 11px;
+  min-height: 28px;
+  cursor: pointer;
+}
+
+/* ── Card preview area ──────────────────────────────────────────────────────── */
+.block-card-preview {
+  flex: 1;
+  min-height: 60px;
+  max-height: 140px;
+  overflow-y: auto;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  padding: 10px 14px;
+}
+
+/* ── Source badge ───────────────────────────────────────────────────────────── */
+.block-card-badge {
+  font-size: 11px;
+  color: var(--color-muted);
+  padding: 4px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-accent);
+}
+
+/* ── Card footer: action buttons ────────────────────────────────────────────── */
+.block-card-footer {
+  display: flex;
+  gap: var(--space-xs);
+  padding: 8px 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Global dialog extras ───────────────────────────────────────────────────── */
+.global-dialog-subtitle {
+  margin-bottom: var(--space-lg);
+}
+
+.trigger-code {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--bg-accent);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  color: var(--color-primary);
+}
+
+.global-section {
+  border: none;
+  padding: 0;
+  margin-bottom: var(--space-lg);
+}
+
+.global-section legend {
+  margin-bottom: var(--space-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-label);
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+  min-height: 32px;
+  padding: 2px 0;
+}
+.radio-label input[type=radio] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.global-chars-wrap {
+  margin: calc(var(--space-sm) * -1) 0 var(--space-md);
+  max-height: 140px;
+}
+
+/* ── Manage page subtitle ───────────────────────────────────────────────────── */
+.manage-subtitle {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin-bottom: var(--space-lg);
+  margin-top: calc(var(--space-sm) * -1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   BLOCK BUILDER COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.block-builder-wrap {
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.bb-root { display: flex; flex-direction: column; gap: var(--space-md); }
+
+/* Trigger row: ::  input  :: */
+.bb-trigger-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.bb-affix {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary);
+  padding: 0 6px;
+  background: var(--bg-accent);
+  border: var(--border-width) solid var(--border);
+  height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.bb-affix:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); border-right: none; }
+.bb-affix:last-child  { border-radius: 0 var(--radius-md) var(--radius-md) 0; border-left: none; }
+.bb-trigger-wrap .input.bb-trigger {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  flex: 1;
+}
+
+/* Side-by-side HTML editor + preview */
+.bb-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+}
+@media (min-width: 640px) {
+  .bb-split { grid-template-columns: 1fr 1fr; }
+}
+.bb-split .field { margin-bottom: 0; }
+
+.bb-preview {
+  min-height: 100px;
+  font-size: 12px;
+  overflow-y: auto;
+  max-height: 200px;
+}
+
+.bb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-md);
+}
+
+.bb-status {
+  font-size: 12px;
+  flex: 1;
+}
+.bb-status.status--ok   { color: var(--color-teal); }
+.bb-status.status--warn { color: var(--color-danger); }
+
+/* ── Formatter quick-block drawer ───────────────────────────────────────────── */
+.builder-drawer {
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  padding: var(--space-md) var(--space-lg);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.builder-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
 /* ── Tablet+: side-by-side panes (640px) ───────────────────────────────────── */
 @media (min-width: 640px) {
   .login-card { padding: 44px 40px; }
