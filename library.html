@@ -97,7 +97,12 @@
     <div id="tab-mine" class="tab-panel" role="tabpanel">
       <div class="manage-header">
         <h2 class="manage-title">My Library</h2>
-        <button id="new-block-toggle" class="btn-secondary">+ New Block</button>
+        <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;align-items:center;">
+          <button id="export-btn" class="btn-ghost">Export my characters</button>
+          <button id="import-btn" class="btn-ghost">Import characters</button>
+          <input type="file" id="import-file-input" accept=".json" hidden />
+          <button id="new-block-toggle" class="btn-secondary">+ New Block</button>
+        </div>
       </div>
 
       <!-- Inline block builder (collapsed by default) -->
@@ -199,6 +204,17 @@
         <button type="submit" class="btn-primary">Save</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- ── Import preview dialog ────────────────────────────── -->
+  <dialog id="import-dialog" class="manage-dialog">
+    <h3 class="dialog-title">Import Characters</h3>
+    <p style="font-size:14px;color:var(--color-text);margin-bottom:var(--space-md)">The following will be added to your account:</p>
+    <div id="import-preview" class="import-preview"></div>
+    <div class="dialog-footer">
+      <button type="button" class="btn-secondary dialog-cancel">Cancel</button>
+      <button type="button" class="btn-primary" id="import-confirm-btn">Import</button>
+    </div>
   </dialog>
 
   <!-- ── Suggest to board dialog ───────────────────────────── -->

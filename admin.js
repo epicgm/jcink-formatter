@@ -29,6 +29,10 @@ const tabBtns          = document.querySelectorAll('.tab-btn');
 const themeToggle      = document.getElementById('theme-toggle');
 const logoutBtn        = document.getElementById('logout-btn');
 
+// Export
+const exportAllBtn     = document.getElementById('export-all-btn');
+const exportAllStatus  = document.getElementById('export-all-status');
+
 // Users tab
 const createUserForm   = document.getElementById('create-user-form');
 const newUsernameIn    = document.getElementById('new-username');
@@ -332,6 +336,73 @@ function escHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+// ── Export all users ──────────────────────────────────────────────────────────
+
+exportAllBtn.addEventListener('click', async () => {
+  exportAllBtn.disabled = true;
+  exportAllBtn.textContent = 'Exporting…';
+  exportAllStatus.textContent = '';
+
+  try {
+    const [
+      { data: users },
+      { data: characters },
+      { data: templates },
+      { data: userLibrary },
+      { data: boardLibrary },
+    ] = await Promise.all([
+      supabase.from('users').select('id, username, role, created_at, active').order('username'),
+      supabase.from('characters').select('id, user_id, name, created_at').order('name'),
+      supabase.from('templates').select('id, character_id, name, shell_html, rules_json, active_block_ids, created_at').order('name'),
+      supabase.from('user_library').select('id, user_id, trigger, replacement_html, is_global').order('trigger'),
+      supabase.from('board_library').select('id, trigger, replacement_html, added_by, status, used_by_count').order('trigger'),
+    ]);
+
+    // Nest templates under characters
+    const tmplsByChar = {};
+    for (const t of templates ?? []) {
+      (tmplsByChar[t.character_id] ??= []).push(t);
+    }
+
+    const charsByUser = {};
+    for (const c of characters ?? []) {
+      (charsByUser[c.user_id] ??= []).push({ ...c, templates: tmplsByChar[c.id] ?? [] });
+    }
+
+    const libByUser = {};
+    for (const b of userLibrary ?? []) {
+      (libByUser[b.user_id] ??= []).push(b);
+    }
+
+    const snapshot = {
+      exported_at:   new Date().toISOString(),
+      users: (users ?? []).map(u => ({
+        ...u,
+        characters:   charsByUser[u.id]  ?? [],
+        user_library: libByUser[u.id]    ?? [],
+      })),
+      board_library: boardLibrary ?? [],
+    };
+
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `inkform_export_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    exportAllStatus.textContent = '✓ Export downloaded';
+    exportAllStatus.style.color = 'var(--color-teal)';
+  } catch (err) {
+    exportAllStatus.textContent = `Error: ${err.message}`;
+    exportAllStatus.style.color = 'var(--color-danger)';
+  } finally {
+    exportAllBtn.disabled = false;
+    exportAllBtn.textContent = 'Export all users (system JSON)';
+  }
+});
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 

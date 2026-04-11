@@ -1602,6 +1602,72 @@ input:focus { outline: none; border-color: var(--color-primary); }
   text-decoration-color: color-mix(in srgb, var(--color-danger) 50%, transparent);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PHASE 7 — Offline banner + export/import
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Offline banner ─────────────────────────────────────────────────────────── */
+.offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: color-mix(in srgb, #B45309 12%, var(--bg-surface));
+  border-bottom: var(--border-width) solid color-mix(in srgb, #F59E0B 40%, transparent);
+  color: #92400E;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  padding: 10px var(--space-lg);
+  line-height: 1.4;
+}
+
+[data-theme='dark'] .offline-banner {
+  background: color-mix(in srgb, #F59E0B 15%, var(--bg-surface));
+  color: #FCD34D;
+  border-color: color-mix(in srgb, #F59E0B 30%, transparent);
+}
+
+/* ── Import preview dialog ──────────────────────────────────────────────────── */
+.import-preview {
+  margin-bottom: var(--space-lg);
+}
+
+.import-summary {
+  font-size: 14px;
+  color: var(--color-text);
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: color-mix(in srgb, var(--bg-accent) 60%, transparent);
+  border-radius: var(--radius-sm);
+  border: var(--border-width) solid var(--border);
+}
+
+.import-char-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.import-char-list li {
+  font-size: 13px;
+  color: var(--color-text);
+  padding: 5px var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: var(--border-width) solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.import-char-list li::before {
+  content: '→ ';
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
 /* ── Tablet+: side-by-side panes (640px) ───────────────────────────────────── */
 @media (min-width: 640px) {
   .login-card { padding: 44px 40px; }

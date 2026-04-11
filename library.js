@@ -4,6 +4,14 @@
  */
 import { createClient }     from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { mountBlockBuilder } from './block-builder.js';
+import {
+  checkOnline,
+  showOfflineBanner,
+  hideOfflineBanner,
+  enqueueWrite,
+  replayQueue,
+  watchOnlineRecovery,
+} from './offline.js';
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
@@ -42,6 +50,14 @@ const editForm        = document.getElementById('edit-form');
 const editTriggerIn   = document.getElementById('edit-trigger');
 const editHtmlIn      = document.getElementById('edit-html');
 
+// Export / Import
+const exportBtn       = document.getElementById('export-btn');
+const importBtn       = document.getElementById('import-btn');
+const importFileIn    = document.getElementById('import-file-input');
+const importDialog    = document.getElementById('import-dialog');
+const importPreview   = document.getElementById('import-preview');
+const importConfirmBtn = document.getElementById('import-confirm-btn');
+
 // Navbar
 const themeToggle     = document.getElementById('theme-toggle');
 const logoutBtn       = document.getElementById('logout-btn');
@@ -65,6 +81,8 @@ let _editBlockId   = null;
 let _builderOpen   = false;
 let _suggestBlock  = null;  // block pending suggest confirmation
 let _diffBlock     = null;  // { userBlockId, boardHtml } pending sync decision
+let _isOnline      = true;
+let _importData    = null;  // parsed import JSON pending confirmation
 
 // ── Theme toggle ──────────────────────────────────────────────────────────────
 
@@ -122,10 +140,19 @@ newBlockToggle.addEventListener('click', () => {
 
 mountBlockBuilder(builderWrap, {
   onSave: async ({ trigger, replacement_html }) => {
-    const { error } = await supabase
-      .from('user_library')
-      .insert({ user_id: userId, trigger, replacement_html });
-    if (error) throw error;
+    if (!_isOnline) {
+      // Queue for later sync; optimistically add to UI
+      enqueueWrite({
+        table:   'user_library',
+        op:      'insert',
+        payload: { user_id: userId, trigger, replacement_html },
+      });
+    } else {
+      const { error } = await supabase
+        .from('user_library')
+        .insert({ user_id: userId, trigger, replacement_html });
+      if (error) throw error;
+    }
     await loadMyLibrary();
     // Collapse builder after save
     _builderOpen = false;
@@ -593,6 +620,198 @@ function makeBtn(label, cls, fn) {
   return btn;
 }
 
+// ── Export my characters ──────────────────────────────────────────────────────
+
+exportBtn.addEventListener('click', async () => {
+  exportBtn.disabled = true;
+  exportBtn.textContent = 'Exporting…';
+
+  try {
+    // Fetch user profile for username
+    const { data: profile } = await supabase
+      .from('users')
+      .select('username')
+      .eq('id', userId)
+      .single();
+
+    // Fetch characters
+    const { data: chars } = await supabase
+      .from('characters')
+      .select('id, name')
+      .eq('user_id', userId)
+      .order('name');
+
+    // Fetch all templates for those characters
+    const charIds = (chars ?? []).map(c => c.id);
+    let tmplsByChar = {};
+    if (charIds.length) {
+      const { data: tmpls } = await supabase
+        .from('templates')
+        .select('id, character_id, name, shell_html, rules_json, active_block_ids')
+        .in('character_id', charIds)
+        .order('name');
+      for (const t of tmpls ?? []) {
+        (tmplsByChar[t.character_id] ??= []).push(t);
+      }
+    }
+
+    // Fetch user_library
+    const { data: library } = await supabase
+      .from('user_library')
+      .select('id, trigger, replacement_html, is_global')
+      .eq('user_id', userId)
+      .order('trigger');
+
+    const payload = {
+      exported_at:  new Date().toISOString(),
+      version:      '1',
+      user:         { username: profile?.username ?? '' },
+      characters:   (chars ?? []).map(c => ({
+        id:        c.id,
+        name:      c.name,
+        templates: tmplsByChar[c.id] ?? [],
+      })),
+      user_library: library ?? [],
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href     = url;
+    a.download = `characters_${(profile?.username ?? 'export').replace(/[^a-z0-9]/gi, '_')}_${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } finally {
+    exportBtn.disabled = false;
+    exportBtn.textContent = 'Export my characters';
+  }
+});
+
+// ── Import characters ─────────────────────────────────────────────────────────
+
+importBtn.addEventListener('click', () => importFileIn.click());
+
+importFileIn.addEventListener('change', () => {
+  const file = importFileIn.files?.[0];
+  if (!file) return;
+  importFileIn.value = '';  // reset so same file can be re-selected
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    let parsed;
+    try {
+      parsed = JSON.parse(e.target.result);
+    } catch {
+      alert('Could not parse file — make sure it is a valid inkform export JSON.');
+      return;
+    }
+    if (!Array.isArray(parsed?.characters)) {
+      alert('Invalid export file: missing "characters" array.');
+      return;
+    }
+    _importData = parsed;
+    showImportPreview(parsed);
+  };
+  reader.readAsText(file);
+});
+
+function showImportPreview(data) {
+  importPreview.innerHTML = '';
+
+  const totalTemplates = data.characters.reduce((n, c) => n + (c.templates?.length ?? 0), 0);
+  const totalBlocks    = data.user_library?.length ?? 0;
+
+  const summary = document.createElement('p');
+  summary.className = 'import-summary';
+  summary.innerHTML =
+    `<strong>${data.characters.length}</strong> character${data.characters.length !== 1 ? 's' : ''} &nbsp;·&nbsp; ` +
+    `<strong>${totalTemplates}</strong> template${totalTemplates !== 1 ? 's' : ''} &nbsp;·&nbsp; ` +
+    `<strong>${totalBlocks}</strong> library block${totalBlocks !== 1 ? 's' : ''}`;
+  importPreview.appendChild(summary);
+
+  if (data.characters.length) {
+    const ul = document.createElement('ul');
+    ul.className = 'import-char-list';
+    for (const c of data.characters) {
+      const li = document.createElement('li');
+      const count = c.templates?.length ?? 0;
+      li.textContent = `${c.name} (${count} template${count !== 1 ? 's' : ''})`;
+      ul.appendChild(li);
+    }
+    importPreview.appendChild(ul);
+  }
+
+  importDialog.showModal();
+}
+
+importConfirmBtn.addEventListener('click', async () => {
+  if (!_importData) return;
+  importConfirmBtn.disabled = true;
+  importConfirmBtn.textContent = 'Importing…';
+
+  try {
+    // Step 1: Insert user_library blocks, build old_id → new_id map
+    const idMap = {};
+    for (const block of _importData.user_library ?? []) {
+      const { data: inserted } = await supabase
+        .from('user_library')
+        .insert({
+          user_id:         userId,
+          trigger:         block.trigger,
+          replacement_html: block.replacement_html,
+          is_global:       block.is_global ?? false,
+        })
+        .select('id')
+        .single();
+      if (inserted) idMap[block.id] = inserted.id;
+    }
+
+    // Step 2: Insert characters + their templates
+    for (const char of _importData.characters) {
+      const { data: newChar } = await supabase
+        .from('characters')
+        .insert({ user_id: userId, name: char.name })
+        .select('id')
+        .single();
+      if (!newChar) continue;
+
+      for (const tmpl of char.templates ?? []) {
+        const remappedIds = (tmpl.active_block_ids ?? [])
+          .map(id => idMap[id])
+          .filter(Boolean);
+
+        await supabase.from('templates').insert({
+          character_id:    newChar.id,
+          name:            tmpl.name,
+          shell_html:      tmpl.shell_html,
+          rules_json:      tmpl.rules_json,
+          active_block_ids: remappedIds.length ? remappedIds : null,
+        });
+      }
+    }
+
+    importDialog.close();
+    _importData = null;
+    await loadMyLibrary();
+  } catch (err) {
+    alert(`Import failed: ${err.message}`);
+  } finally {
+    importConfirmBtn.disabled = false;
+    importConfirmBtn.textContent = 'Import';
+  }
+});
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
+_isOnline = await checkOnline();
+if (!_isOnline) {
+  showOfflineBanner();
+  watchOnlineRecovery(async () => {
+    hideOfflineBanner();
+    _isOnline = true;
+    await replayQueue(supabase);
+    await loadMyLibrary();
+  });
+}
 await loadMyLibrary();

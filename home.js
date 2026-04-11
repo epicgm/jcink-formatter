@@ -5,6 +5,13 @@
 import { createClient }     from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { formatPost }       from './parser.js';
 import { mountBlockBuilder } from './block-builder.js';
+import {
+  checkOnline,
+  showOfflineBanner,
+  hideOfflineBanner,
+  watchOnlineRecovery,
+  replayQueue,
+} from './offline.js';
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
@@ -33,11 +40,13 @@ const drawerBody    = document.getElementById('builder-drawer-body');
 let _templates     = {};   // id → full template object
 let currentTmpl    = null;
 let currentRepls   = [];
+let _isOnline      = true;
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 
 const CKEY_CHARS = (uid) => `jcink_chars_${uid}`;
 const CKEY_TMPLS = (cid) => `jcink_tmpls_${cid}`;
+const CKEY_REPLS = (tid) => `jcink_repls_${tid}`;
 
 function cacheWrite(key, data) {
   try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
@@ -53,15 +62,18 @@ async function loadCharacters() {
   charSelect.disabled = true;
   charStatus.textContent = 'Loading…';
 
-  const { data, error } = await supabase
-    .from('characters')
-    .select('id, name')
-    .eq('user_id', userId)
-    .order('name');
-
-  // Always write to localStorage as fallback cache
-  const chars = data ?? cacheRead(CKEY_CHARS(userId)) ?? [];
-  cacheWrite(CKEY_CHARS(userId), chars);
+  let chars;
+  if (_isOnline) {
+    const { data } = await supabase
+      .from('characters')
+      .select('id, name')
+      .eq('user_id', userId)
+      .order('name');
+    chars = data ?? cacheRead(CKEY_CHARS(userId)) ?? [];
+    if (data) cacheWrite(CKEY_CHARS(userId), chars);
+  } else {
+    chars = cacheRead(CKEY_CHARS(userId)) ?? [];
+  }
 
   charSelect.innerHTML = '<option value="">— Select character —</option>';
 
@@ -89,15 +101,18 @@ async function loadTemplates(characterId) {
 
   if (!characterId) return;
 
-  const { data } = await supabase
-    .from('templates')
-    .select('id, name, shell_html, rules_json, active_block_ids')
-    .eq('character_id', characterId)
-    .order('name');
-
-  // Always write to localStorage as fallback cache
-  const tmpls = data ?? cacheRead(CKEY_TMPLS(characterId)) ?? [];
-  cacheWrite(CKEY_TMPLS(characterId), tmpls);
+  let tmpls;
+  if (_isOnline) {
+    const { data } = await supabase
+      .from('templates')
+      .select('id, name, shell_html, rules_json, active_block_ids')
+      .eq('character_id', characterId)
+      .order('name');
+    tmpls = data ?? cacheRead(CKEY_TMPLS(characterId)) ?? [];
+    if (data) cacheWrite(CKEY_TMPLS(characterId), tmpls);
+  } else {
+    tmpls = cacheRead(CKEY_TMPLS(characterId)) ?? [];
+  }
 
   for (const tmpl of tmpls) {
     _templates[tmpl.id] = tmpl;
@@ -113,13 +128,17 @@ async function loadTemplates(characterId) {
 async function loadReplacements(tmpl) {
   if (!tmpl?.active_block_ids?.length) return [];
 
+  if (!_isOnline) return cacheRead(CKEY_REPLS(tmpl.id)) ?? [];
+
   const ids = tmpl.active_block_ids;
   const [{ data: userBlocks }, { data: boardBlocks }] = await Promise.all([
     supabase.from('user_library').select('trigger, replacement_html').in('id', ids),
     supabase.from('board_library').select('trigger, replacement_html').in('id', ids),
   ]);
 
-  return [...(userBlocks ?? []), ...(boardBlocks ?? [])];
+  const repls = [...(userBlocks ?? []), ...(boardBlocks ?? [])];
+  cacheWrite(CKEY_REPLS(tmpl.id), repls);
+  return repls;
 }
 
 // ── Formatter ─────────────────────────────────────────────────────────────────
@@ -227,5 +246,16 @@ drawerClose.addEventListener('click', closeDrawer);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
+_isOnline = await checkOnline();
+if (!_isOnline) {
+  showOfflineBanner();
+  watchOnlineRecovery(async () => {
+    hideOfflineBanner();
+    _isOnline = true;
+    const synced = await replayQueue(supabase);
+    await loadCharacters();
+    if (synced > 0) console.info(`[offline] replayed ${synced} queued writes`);
+  });
+}
 await loadCharacters();
 updateOutput();

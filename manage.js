@@ -3,6 +3,14 @@
  * Requires config.js loaded first (sets window.SUPABASE_URL / SUPABASE_ANON_KEY)
  */
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import {
+  checkOnline,
+  showOfflineBanner,
+  hideOfflineBanner,
+  enqueueWrite,
+  replayQueue,
+  watchOnlineRecovery,
+} from './offline.js';
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
@@ -62,6 +70,7 @@ const logoutBtn     = document.getElementById('logout-btn');
 let _editCharId   = null;
 let _editTmplId   = null;
 let _editBlockId  = null;
+let _isOnline     = true;
 
 // ── Theme toggle ──────────────────────────────────────────────────────────────
 
@@ -167,6 +176,19 @@ charForm.addEventListener('submit', async e => {
   e.preventDefault();
   const name = charNameIn.value.trim();
   if (!name) return;
+
+  if (!_isOnline) {
+    // Queue simple rename updates; skip new-character inserts (forwardfill can't run offline)
+    if (_editCharId) {
+      enqueueWrite({ table: 'characters', op: 'update', id: _editCharId, payload: { name } });
+      charDialog.close();
+      // Optimistic update in the list
+      await loadCharacters();
+    } else {
+      alert('Cannot create a new character while offline. Please reconnect first.');
+    }
+    return;
+  }
 
   if (_editCharId) {
     await supabase.from('characters').update({ name }).eq('id', _editCharId);
@@ -306,6 +328,31 @@ tmplForm.addEventListener('submit', async e => {
   e.preventDefault();
   const name = tmplNameIn.value.trim();
   if (!name) return;
+
+  if (!_isOnline) {
+    if (_editTmplId) {
+      const rules = {};
+      if (tmplDlgOpen.value.trim())  rules.dialogueOpen  = tmplDlgOpen.value.trim();
+      if (tmplDlgClose.value.trim()) rules.dialogueClose = tmplDlgClose.value.trim();
+      if (tmplThkOpen.value.trim())  rules.thoughtOpen   = tmplThkOpen.value.trim();
+      if (tmplThkClose.value.trim()) rules.thoughtClose  = tmplThkClose.value.trim();
+      enqueueWrite({
+        table: 'templates',
+        op: 'update',
+        id: _editTmplId,
+        payload: {
+          name,
+          shell_html: tmplShellIn.value.trim() || null,
+          rules_json: Object.keys(rules).length ? rules : null,
+        },
+      });
+      tmplDialog.close();
+      await loadTemplates(tmplCharSel.value);
+    } else {
+      alert('Cannot create a new template while offline. Please reconnect first.');
+    }
+    return;
+  }
 
   const rules = {};
   if (tmplDlgOpen.value.trim())  rules.dialogueOpen  = tmplDlgOpen.value.trim();
@@ -449,5 +496,16 @@ function makeItemRow(label, actions) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
+_isOnline = await checkOnline();
+if (!_isOnline) {
+  showOfflineBanner();
+  watchOnlineRecovery(async () => {
+    hideOfflineBanner();
+    _isOnline = true;
+    await replayQueue(supabase);
+    await loadCharacters();
+    await loadLibrary();
+  });
+}
 await loadCharacters();
 await loadLibrary();
