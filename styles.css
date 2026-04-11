@@ -525,6 +525,267 @@ input:focus { outline: none; border-color: var(--color-primary); }
   border: 0;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   MANAGE PAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tab strip ──────────────────────────────────────────────────────────────── */
+.manage-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 20px;
+  background: var(--bg-page);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 57px; /* navbar height */
+  z-index: 90;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--color-muted);
+  cursor: pointer;
+  min-height: var(--tap-min);
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab-btn:hover { color: var(--color-text); }
+.tab-btn.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* ── Scrollable content area ────────────────────────────────────────────────── */
+.manage-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-lg);
+  position: relative;
+  z-index: 1;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Section header ─────────────────────────────────────────────────────────── */
+.manage-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.manage-char-field {
+  flex: 1;
+  min-width: 160px;
+  margin-bottom: 0;
+}
+
+.manage-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* ── Item list ──────────────────────────────────────────────────────────────── */
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  min-height: var(--tap-min);
+  transition: border-color 0.15s;
+}
+.item-row:hover { border-color: var(--color-primary); }
+
+.item-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+/* ── Small button variants ──────────────────────────────────────────────────── */
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  border-radius: var(--radius-pill);
+  border: var(--border-width) solid;
+  cursor: pointer;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-sm.btn-ghost {
+  background: transparent;
+  color: var(--color-muted);
+  border-color: var(--border);
+  min-height: 36px;
+}
+.btn-sm.btn-ghost:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+.btn-danger {
+  background: transparent;
+  color: var(--color-danger);
+  border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
+}
+.btn-danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+}
+
+/* ── Empty state ────────────────────────────────────────────────────────────── */
+.empty-state {
+  font-size: 13px;
+  color: var(--color-muted);
+  padding: var(--space-lg) 0;
+}
+.empty-state code {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  background: var(--bg-accent);
+  border: var(--border-width) solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* ── Dialog ─────────────────────────────────────────────────────────────────── */
+.manage-dialog {
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg) var(--space-xl);
+  width: min(480px, calc(100vw - 32px));
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+  color: var(--color-text);
+}
+.manage-dialog--wide {
+  width: min(600px, calc(100vw - 32px));
+}
+[data-theme='dark'] .manage-dialog {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.manage-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.dialog-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: var(--space-lg);
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border);
+}
+
+/* ── Field hint ─────────────────────────────────────────────────────────────── */
+.field-hint {
+  font-weight: 400;
+  text-transform: none;
+  font-size: 10px;
+  color: var(--color-muted);
+  letter-spacing: 0;
+}
+.field-hint code {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  background: var(--bg-accent);
+  border: var(--border-width) solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+/* ── Template rules grid ────────────────────────────────────────────────────── */
+.rules-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm) var(--space-md);
+  background: var(--bg-accent);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-top: var(--space-sm);
+}
+.rules-grid .field { margin-bottom: 0; }
+
+/* ── Active blocks checklist ────────────────────────────────────────────────── */
+.blocks-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg-accent);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  max-height: 160px;
+  overflow-y: auto;
+  margin-top: var(--space-sm);
+}
+
+.block-check-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Courier New', monospace;
+  color: var(--color-text);
+  cursor: pointer;
+  min-height: 32px;
+  padding: 2px 0;
+}
+.block-check-label input[type=checkbox] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── Monospace variant for inputs + textareas ───────────────────────────────── */
+.textarea--mono,
+.input--mono {
+  font-family: 'Courier New', monospace !important;
+  font-size: 12px !important;
+}
+
 /* ── Tablet+: side-by-side panes (640px) ───────────────────────────────────── */
 @media (min-width: 640px) {
   .login-card { padding: 44px 40px; }
