@@ -169,8 +169,17 @@ createUserForm.addEventListener('submit', async e => {
   createUserStatus.textContent = '';
 
   try {
+    // Re-fetch the session token at call time and pass it explicitly.
+    // supabase.functions.invoke falls back to sending the anon key as the
+    // Bearer token when using sb_publishable_ format keys, which the Edge
+    // Functions platform rejects as "Invalid JWT". Passing the JWT directly
+    // bypasses this SDK behaviour.
+    const { data: { session: liveSession } } = await supabase.auth.getSession();
+    if (!liveSession) { window.location.replace('index.html'); return; }
+
     const { data, error } = await supabase.functions.invoke('admin-create-user', {
       body: { username, password, role },
+      headers: { Authorization: `Bearer ${liveSession.access_token}` },
     });
 
     if (error) {

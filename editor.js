@@ -86,11 +86,25 @@ extractBtn.addEventListener('click', async () => {
   extractBtn.textContent = 'Extracting…';
 
   try {
+    // Pass the session JWT explicitly — supabase.functions.invoke falls back to
+    // the anon key as Bearer when using sb_publishable_ format, which the platform
+    // rejects as "Invalid JWT". Passing it directly bypasses this SDK behaviour.
+    const { data: { session: liveSession } } = await supabase.auth.getSession();
+    if (!liveSession) { window.location.replace('index.html'); return; }
+
     const { data, error } = await supabase.functions.invoke('extract-template', {
       body: { template },
+      headers: { Authorization: `Bearer ${liveSession.access_token}` },
     });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      let detail = error.message;
+      try {
+        const body = await error.context.json();
+        detail = body?.error ?? JSON.stringify(body);
+      } catch { /* ignore */ }
+      throw new Error(detail);
+    }
     if (data?.error) throw new Error(data.error);
 
     renderResults(data);
