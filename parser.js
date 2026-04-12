@@ -83,16 +83,20 @@ const DEFAULTS = {
 function applyInlineRules(text, rules = {}) {
   const c = { ...DEFAULTS, ...rules };
 
-  // Normalise curly/smart double quotes to straight " before matching.
-  // This means \u201CHello\u201D is treated identically to "Hello".
-  text = text.replace(/[\u201C\u201D]/g, '"');
-
-  // ── Dialogue: double quotes ───────────────────────────────────────
-  // The full match (including its surrounding " characters) is passed
-  // unchanged into the open/close wrapper. Rules must NOT include " —
-  // the quotes come from the original input text.
-  text = text.replace(/"([^"]*)"/g, (match) =>
-    `${c.dialogueOpen}${match}${c.dialogueClose}`
+  // ── Dialogue: any double-quote style → straight " in output ──────
+  //
+  // Match any opening double-quote variant (" straight, \u201C left-curly,
+  // \u201D right-curly), capture inner content, match any closing variant.
+  //
+  // IMPORTANT: the REPLACEMENT always emits literal straight " chars — it
+  // does NOT reuse the matched open/close chars. This means:
+  //   • curly/smart quotes are normalised to straight in the output
+  //   • there is no doubling even if dialogueOpen/Close happen to contain
+  //     a " character, because the output quotes come from the literal
+  //     replacement string, not from the regex match
+  const dialogueRe = /[\u201C\u201D"]([^"\u201C\u201D]*?)[\u201C\u201D"]/g;
+  text = text.replace(dialogueRe, (_, inner) =>
+    `${c.dialogueOpen}"${inner}"${c.dialogueClose}`
   );
 
   // ── Thoughts: single quotes, excluding apostrophes & possessives ──
@@ -107,10 +111,9 @@ function applyInlineRules(text, rules = {}) {
   // (?!\w)    closing ' must NOT be followed by a word char
   //           → excludes trailing possessives / contractions
   //
-  // Again, the full match (including the surrounding ' characters) is
-  // preserved — rules wrap it, not replace the quote chars.
-  text = text.replace(/(?<!\w)'((?:[^']|\w'\w)+)'(?!\w)/g, (match) =>
-    `${c.thoughtOpen}${match}${c.thoughtClose}`
+  // Replacement emits literal ' chars for the same reason as dialogue.
+  text = text.replace(/(?<!\w)'((?:[^']|\w'\w)+)'(?!\w)/g, (_, inner) =>
+    `${c.thoughtOpen}'${inner}'${c.thoughtClose}`
   );
 
   return text;

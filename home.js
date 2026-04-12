@@ -230,24 +230,26 @@ async function onTemplateSelect(tmplId) {
 // ── Formatter ─────────────────────────────────────────────────────────────────
 
 function updateOutput() {
-  const raw       = rawInput.value;
-  const formatted = formatPost(raw, {
-    replacements: currentRepls,
-    shellHtml:    currentTmpl?.shell_html ?? null,
-    rules:        currentTmpl?.rules_json ?? {},
-  });
+  const raw      = rawInput.value;
+  const shell    = currentTmpl?.shell_html ?? null;
+  const rules    = currentTmpl?.rules_json ?? {};
 
-  // _copyContent keeps the full BBCode output (including [dohtml] tags) so
-  // the copy button pastes correctly into Jcink.
-  _copyContent = formatted;
+  // Step 1: format content only (no shell) → raw BBCode string
+  const bbContent = formatPost(raw, { replacements: currentRepls, rules });
 
-  // For the live preview: strip [dohtml] directives (Jcink-only) then
-  // convert BBCode tags to inline HTML so the preview renders visually.
-  const display = convertBBCodeToHTML(
-    formatted
-      .replace(/\[dohtml\]/gi, '')
-      .replace(/\[\/dohtml\]/gi, '')
-  );
+  // Step 2: copy buffer gets BBCode content injected into shell as-is,
+  //         preserving [dohtml] so it pastes correctly into Jcink.
+  _copyContent = shell ? shell.replace('{{content}}', bbContent) : bbContent;
+
+  // Step 3: convert ONLY the content BBCode to HTML (shell is real HTML —
+  //         running BBCode conversion on it would corrupt CSS classes/styles).
+  const htmlContent = convertBBCodeToHTML(bbContent);
+
+  // Step 4: inject HTML content into shell, then strip [dohtml] wrappers
+  //         (they are Jcink render directives, meaningless in a browser pane).
+  const display = (shell ? shell.replace('{{content}}', htmlContent) : htmlContent)
+    .replace(/\[dohtml\]/gi, '')
+    .replace(/\[\/dohtml\]/gi, '');
 
   outputEl.innerHTML = display || '<span class="output-placeholder">Formatted output appears here…</span>';
 }
@@ -332,16 +334,13 @@ function renderRulesDrawer() {
 
     // Live preview: update output as user edits rules
     inp.addEventListener('input', () => {
-      const draft = getDraftRules();
-      const preview = formatPost(rawInput.value, {
-        replacements: currentRepls,
-        shellHtml: currentTmpl?.shell_html ?? null,
-        rules: draft,
-      });
-      _copyContent = preview;
-      const display = convertBBCodeToHTML(
-        preview.replace(/\[dohtml\]/gi, '').replace(/\[\/dohtml\]/gi, '')
-      );
+      const draft   = getDraftRules();
+      const shell   = currentTmpl?.shell_html ?? null;
+      const bbCont  = formatPost(rawInput.value, { replacements: currentRepls, rules: draft });
+      _copyContent  = shell ? shell.replace('{{content}}', bbCont) : bbCont;
+      const htmlCont = convertBBCodeToHTML(bbCont);
+      const display  = (shell ? shell.replace('{{content}}', htmlCont) : htmlCont)
+        .replace(/\[dohtml\]/gi, '').replace(/\[\/dohtml\]/gi, '');
       outputEl.innerHTML = display || '<span class="output-placeholder">Formatted output appears here…</span>';
     });
 
