@@ -38,6 +38,7 @@ if (_navUsername) _navUsername.textContent = session.user.email.split('@')[0];
 
 const charSelect      = document.getElementById('character-select');
 const tmplSelect      = document.getElementById('template-select');
+const templateField   = document.getElementById('template-field');
 const rawInput        = document.getElementById('raw-input');
 const outputEl        = document.getElementById('formatted-output');
 const copyBtn         = document.getElementById('copy-btn');
@@ -132,7 +133,12 @@ async function loadTemplates(characterId) {
   tmplSelect.innerHTML = '<option value="">— Select template —</option>';
   tmplSelect.disabled  = true;
 
-  if (!characterId) return;
+  if (!characterId) {
+    templateField.hidden = true;
+    return;
+  }
+
+  templateField.hidden = false;
 
   let tmpls;
   if (_isOnline) {
