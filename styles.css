@@ -586,6 +586,28 @@ input[type="radio"]:focus-visible + .character-card {
 }
 .rules-drawer-hint a { color: var(--color-primary); text-decoration: none; }
 .rules-drawer-hint a:hover { text-decoration: underline; }
+.rules-drawer-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-md);
+}
+@media (max-width: 640px) {
+  .rules-drawer-fields { grid-template-columns: 1fr; }
+}
+.rules-drawer-field { margin-bottom: 0; }
+.rules-drawer-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border);
+}
+.rules-save-status {
+  font-size: 12px;
+  flex: 1;
+}
 
 /* ── Desktop two-column formatter ───────────────────────────────────────────── */
 @media (min-width: 768px) {

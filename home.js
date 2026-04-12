@@ -52,6 +52,7 @@ let _templates     = {};   // id → full template object
 let currentTmpl    = null;
 let currentRepls   = [];
 let _isOnline      = true;
+let _copyContent   = '';   // formatted output WITH [dohtml] tags, used by copy btn
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 
@@ -222,6 +223,8 @@ async function onTemplateSelect(tmplId) {
   currentTmpl  = _templates[tmplId] ?? null;
   currentRepls = await loadReplacements(currentTmpl);
   updateOutput();
+  // Refresh drawer if it's open
+  if (!rulesDrawerBody.hidden) renderRulesDrawer();
 }
 
 // ── Formatter ─────────────────────────────────────────────────────────────────
@@ -233,7 +236,16 @@ function updateOutput() {
     shellHtml:    currentTmpl?.shell_html ?? null,
     rules:        currentTmpl?.rules_json ?? {},
   });
-  outputEl.innerHTML = formatted || '<span class="output-placeholder">Formatted output appears here…</span>';
+
+  // Store the full output (including [dohtml] tags) for the copy button.
+  // Strip [dohtml]/[/dohtml] only for the visual preview — they are Jcink
+  // rendering directives that don't belong in an HTML preview pane.
+  _copyContent = formatted;
+  const display = formatted
+    .replace(/\[dohtml\]/gi, '')
+    .replace(/\[\/dohtml\]/gi, '');
+
+  outputEl.innerHTML = display || '<span class="output-placeholder">Formatted output appears here…</span>';
 }
 
 // ── Clipboard ─────────────────────────────────────────────────────────────────
@@ -257,9 +269,7 @@ async function copyToClipboard(text) {
 rawInput.addEventListener('input', updateOutput);
 
 copyBtn.addEventListener('click', async () => {
-  const content = outputEl.innerHTML.includes('output-placeholder')
-    ? ''
-    : outputEl.innerHTML;
+  const content = _copyContent;
   if (!content) return;
 
   const ok = await copyToClipboard(content);
@@ -276,11 +286,133 @@ copyBtn.addEventListener('click', async () => {
   }
 });
 
-// Rules drawer toggle
+// ── Rules drawer ─────────────────────────────────────────────────────────────
+
+const RULE_FIELDS = [
+  { key: 'dialogueOpen',  label: 'Dialogue Open',  placeholder: '<span class="dialogue">' },
+  { key: 'dialogueClose', label: 'Dialogue Close', placeholder: '</span>' },
+  { key: 'thoughtOpen',   label: 'Thought Open',   placeholder: '<span class="thought">' },
+  { key: 'thoughtClose',  label: 'Thought Close',  placeholder: '</span>' },
+];
+
+function renderRulesDrawer() {
+  rulesDrawerBody.innerHTML = '';
+
+  if (!currentTmpl) {
+    rulesDrawerBody.innerHTML = '<p class="rules-drawer-hint">Select a template to edit its rules.</p>';
+    return;
+  }
+
+  const rules = { ...(currentTmpl.rules_json ?? {}) };
+
+  // Rule fields
+  const fieldsWrap = document.createElement('div');
+  fieldsWrap.className = 'rules-drawer-fields';
+
+  for (const { key, label, placeholder } of RULE_FIELDS) {
+    const row = document.createElement('div');
+    row.className = 'field rules-drawer-field';
+
+    const lbl = document.createElement('label');
+    lbl.className = 'field-label';
+    lbl.textContent = label;
+    lbl.htmlFor = `rule-${key}`;
+
+    const inp = document.createElement('input');
+    inp.type        = 'text';
+    inp.id          = `rule-${key}`;
+    inp.className   = 'input input--mono';
+    inp.placeholder = placeholder;
+    inp.value       = rules[key] ?? '';
+    inp.dataset.ruleKey = key;
+
+    // Live preview: update output as user edits rules
+    inp.addEventListener('input', () => {
+      const draft = getDraftRules();
+      const preview = formatPost(rawInput.value, {
+        replacements: currentRepls,
+        shellHtml: currentTmpl?.shell_html ?? null,
+        rules: draft,
+      });
+      _copyContent = preview;
+      const display = preview
+        .replace(/\[dohtml\]/gi, '')
+        .replace(/\[\/dohtml\]/gi, '');
+      outputEl.innerHTML = display || '<span class="output-placeholder">Formatted output appears here…</span>';
+    });
+
+    row.appendChild(lbl);
+    row.appendChild(inp);
+    fieldsWrap.appendChild(row);
+  }
+
+  rulesDrawerBody.appendChild(fieldsWrap);
+
+  // Footer: save + link
+  const footer = document.createElement('div');
+  footer.className = 'rules-drawer-footer';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'btn-primary btn-sm';
+  saveBtn.textContent = 'Save Rules';
+  saveBtn.addEventListener('click', () => saveRules(saveBtn));
+
+  const saveStatus = document.createElement('span');
+  saveStatus.className = 'rules-save-status';
+  saveStatus.id = 'rules-save-status';
+
+  const link = document.createElement('a');
+  link.href = `manage.html`;
+  link.className = 'rules-drawer-hint';
+  link.textContent = 'Full editor in Characters →';
+
+  footer.appendChild(saveBtn);
+  footer.appendChild(saveStatus);
+  footer.appendChild(link);
+  rulesDrawerBody.appendChild(footer);
+}
+
+function getDraftRules() {
+  const draft = {};
+  rulesDrawerBody.querySelectorAll('[data-rule-key]').forEach(inp => {
+    const val = inp.value.trim();
+    if (val) draft[inp.dataset.ruleKey] = val;
+  });
+  return draft;
+}
+
+async function saveRules(btn) {
+  if (!currentTmpl) return;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  const status = document.getElementById('rules-save-status');
+
+  const rules = getDraftRules();
+  const { error } = await supabase
+    .from('templates')
+    .update({ rules_json: Object.keys(rules).length ? rules : null })
+    .eq('id', currentTmpl.id);
+
+  if (error) {
+    if (status) { status.textContent = 'Error: ' + error.message; status.style.color = 'var(--color-danger)'; }
+  } else {
+    // Update in-memory template so future updateOutput calls use the saved rules
+    currentTmpl = { ...currentTmpl, rules_json: Object.keys(rules).length ? rules : null };
+    _templates[currentTmpl.id] = currentTmpl;
+    if (status) { status.textContent = '✓ Saved'; status.style.color = 'var(--color-teal)'; }
+    setTimeout(() => { if (status) status.textContent = ''; }, 2500);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Save Rules';
+}
+
 rulesDrawerToggle.addEventListener('click', () => {
   const isOpen = !rulesDrawerBody.hidden;
   rulesDrawerBody.hidden = isOpen;
   rulesDrawerToggle.querySelector('.rules-drawer-arrow').textContent = isOpen ? '▾' : '▴';
+  if (!isOpen) renderRulesDrawer();
 });
 
 logoutBtn.addEventListener('click', async () => {
