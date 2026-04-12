@@ -173,7 +173,16 @@ createUserForm.addEventListener('submit', async e => {
       body: { username, password, role },
     });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      // error.message is always the generic SDK wrapper "Edge Function returned a non-2xx
+      // status code". Extract the real message from the JSON response body instead.
+      let detail = error.message;
+      try {
+        const body = await error.context?.json?.();
+        if (body?.error) detail = body.error;
+      } catch { /* response body unreadable — fall back to SDK message */ }
+      throw new Error(detail);
+    }
     if (data?.error) throw new Error(data.error);
 
     createUserStatus.textContent = `✓ Created ${username} (${role})`;
