@@ -32,6 +32,10 @@ const tabBtns          = document.querySelectorAll('.tab-btn');
 const themeToggle      = document.getElementById('theme-toggle');
 const logoutBtn        = document.getElementById('logout-btn');
 
+// Show logged-in username in nav
+const _navUsername = document.getElementById('nav-username');
+if (_navUsername) _navUsername.textContent = session.user.email.split('@')[0];
+
 // Export
 const exportAllBtn     = document.getElementById('export-all-btn');
 const exportAllStatus  = document.getElementById('export-all-status');

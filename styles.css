@@ -393,6 +393,16 @@ input:focus { outline: none; border-color: var(--color-primary); }
   gap: var(--space-sm);
 }
 
+.nav-username {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 0 var(--space-xs);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Formatter controls (selectors above panes) ─────────────────────────────── */
 .formatter-controls {
   display: flex;

@@ -16,6 +16,14 @@ if (!session) { window.location.replace('index.html'); throw 0; }
 const userId = session.user.id;
 document.body.style.visibility = '';
 
+// ── Edit-mode detection ───────────────────────────────────────────────────────
+// When navigated from manage.html with ?character_id=<uuid>, the editor loads
+// the existing character + first template and saves as UPDATE instead of INSERT.
+
+const _editParams  = new URLSearchParams(window.location.search);
+const _editCharId  = _editParams.get('character_id');  // null = create mode
+let   _editTmplId  = null;                             // set during load if template exists
+
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 
 const charNameIn    = document.getElementById('char-name-input');
@@ -33,11 +41,43 @@ const saveBtn       = document.getElementById('save-btn');
 const saveStatus    = document.getElementById('save-status');
 const themeToggle   = document.getElementById('theme-toggle');
 const logoutBtn     = document.getElementById('logout-btn');
+const _navUsername  = document.getElementById('nav-username');
+if (_navUsername) _navUsername.textContent = session.user.email.split('@')[0];
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 // cardStates: array of { id, kind: 'shell'|'rule', data, status: 'pending'|'confirmed'|'skipped', resolvedType }
 const cardStates = [];
+
+// ── Load existing character in edit mode ──────────────────────────────────────
+
+if (_editCharId) {
+  // Update page chrome for edit mode
+  document.title = 'Edit Character — inkform';
+  const titleEl = document.querySelector('.editor-title');
+  if (titleEl) titleEl.textContent = 'Edit Character';
+  saveBtn.textContent = 'Save Changes';
+
+  // Load character name
+  const { data: charRow } = await supabase
+    .from('characters').select('name').eq('id', _editCharId).single();
+  if (charRow) charNameIn.value = charRow.name;
+
+  // Load first template (shell_html + name)
+  const { data: tmplRows } = await supabase
+    .from('templates').select('id, name, shell_html')
+    .eq('character_id', _editCharId).limit(1);
+  if (tmplRows?.length) {
+    _editTmplId = tmplRows[0].id;
+    tmplNameIn.value  = tmplRows[0].name  ?? 'Default';
+    templateIn.value  = tmplRows[0].shell_html ?? '';
+    if (templateIn.value) {
+      extractBtn.disabled = false;
+      extractHint.textContent = 'Template loaded — re-extract or save changes.';
+    }
+  }
+  updateSaveBtn();
+}
 
 // ── Theme + logout ────────────────────────────────────────────────────────────
 
@@ -370,17 +410,9 @@ saveBtn.addEventListener('click', async () => {
   saveStatus.textContent = 'Saving…';
 
   try {
-    // 1. Create character
-    const { data: charRows, error: charErr } = await supabase
-      .from('characters')
-      .insert({ user_id: userId, name: characterName })
-      .select('id');
-    if (charErr) throw charErr;
-    const characterId = charRows[0].id;
-
-    // 2. Build template payload from confirmed cards
+    // 2. Build template payload from confirmed cards (used in both create + edit)
     const confirmed = cardStates.filter(s => s.status === 'confirmed');
-    let shellHtml   = null;
+    let shellHtml   = templateIn.value.trim() || null;  // fall back to raw textarea value
     const rules     = {};
 
     for (const state of confirmed) {
@@ -396,31 +428,64 @@ saveBtn.addEventListener('click', async () => {
           rules.thoughtOpen   = rule.opening_marker;
           rules.thoughtClose  = rule.closing_marker;
         }
-        // action / narration / other are surfaced but don't map to current parser keys
       }
     }
 
-    // 3. Create template
-    const { error: tmplErr } = await supabase
-      .from('templates')
-      .insert({
-        character_id: characterId,
-        name:         templateName,
-        shell_html:   shellHtml,
-        rules_json:   Object.keys(rules).length ? rules : null,
-      });
-    if (tmplErr) throw tmplErr;
+    if (_editCharId) {
+      // ── Edit mode: UPDATE existing character + template ─────────────────────
+      const { error: charErr } = await supabase
+        .from('characters').update({ name: characterName }).eq('id', _editCharId);
+      if (charErr) throw charErr;
 
-    saveStatus.textContent = `✓ Character "${characterName}" and template "${templateName}" created.`;
-    saveBtn.textContent = '✓ Saved';
+      const tmplPayload = {
+        name:       templateName,
+        shell_html: shellHtml,
+        rules_json: Object.keys(rules).length ? rules : null,
+      };
 
-    // Redirect to manage after short delay
-    setTimeout(() => { window.location.href = 'manage.html'; }, 1500);
+      if (_editTmplId) {
+        const { error: tmplErr } = await supabase
+          .from('templates').update(tmplPayload).eq('id', _editTmplId);
+        if (tmplErr) throw tmplErr;
+      } else {
+        // Character had no template — create one
+        const { error: tmplErr } = await supabase
+          .from('templates').insert({ ...tmplPayload, character_id: _editCharId });
+        if (tmplErr) throw tmplErr;
+      }
+
+      saveStatus.textContent = `✓ "${characterName}" updated.`;
+      saveBtn.textContent = '✓ Saved';
+      setTimeout(() => { window.location.href = 'manage.html'; }, 1500);
+
+    } else {
+      // ── Create mode: INSERT new character + template ─────────────────────────
+      const { data: charRows, error: charErr } = await supabase
+        .from('characters')
+        .insert({ user_id: userId, name: characterName })
+        .select('id');
+      if (charErr) throw charErr;
+      const characterId = charRows[0].id;
+
+      const { error: tmplErr } = await supabase
+        .from('templates')
+        .insert({
+          character_id: characterId,
+          name:         templateName,
+          shell_html:   shellHtml,
+          rules_json:   Object.keys(rules).length ? rules : null,
+        });
+      if (tmplErr) throw tmplErr;
+
+      saveStatus.textContent = `✓ Character "${characterName}" and template "${templateName}" created.`;
+      saveBtn.textContent = '✓ Saved';
+      setTimeout(() => { window.location.href = 'manage.html'; }, 1500);
+    }
 
   } catch {
     saveStatus.textContent = 'Could not save that change. Try again or export a backup from the Library page.';
     saveBtn.disabled = false;
-    saveBtn.textContent = 'Create Character & Template';
+    saveBtn.textContent = _editCharId ? 'Save Changes' : 'Create Character & Template';
   }
 });
 

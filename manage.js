@@ -26,6 +26,9 @@ const userId = session.user.id;
 const _adminLink = document.getElementById('admin-link');
 if (_adminLink && localStorage.getItem('inkform_role') === 'admin') _adminLink.hidden = false;
 
+const _navUsername = document.getElementById('nav-username');
+if (_navUsername) _navUsername.textContent = session.user.email.split('@')[0];
+
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 
 // Tabs
@@ -145,7 +148,7 @@ function renderCharList(chars) {
   charEmpty.hidden = chars.length > 0;
   for (const c of chars) {
     charList.appendChild(makeItemRow(c.name, [
-      { label: 'Edit',   cls: 'btn-ghost',  fn: () => openCharEdit(c) },
+      { label: 'Edit',   cls: 'btn-ghost',  fn: () => window.location.href = `editor.html?character_id=${c.id}` },
       { label: 'Delete', cls: 'btn-danger', fn: () => deleteChar(c.id, c.name) },
     ]));
   }

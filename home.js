@@ -30,6 +30,10 @@ if (_adminLink && localStorage.getItem('inkform_role') === 'admin') {
   _adminLink.hidden = false;
 }
 
+// Show logged-in username in nav
+const _navUsername = document.getElementById('nav-username');
+if (_navUsername) _navUsername.textContent = session.user.email.split('@')[0];
+
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 
 const charSelect      = document.getElementById('character-select');
