@@ -174,12 +174,13 @@ createUserForm.addEventListener('submit', async e => {
     });
 
     if (error) {
-      // error.message is always the generic SDK wrapper "Edge Function returned a non-2xx
-      // status code". Extract the real message from the JSON response body instead.
+      // error.message is the generic SDK wrapper text. Extract the real message
+      // from the JSON response body and HTTP status for clearer diagnosis.
       let detail = error.message;
       try {
-        const body = await error.context?.json?.();
-        if (body?.error) detail = body.error;
+        const status = error.context?.status ?? '';
+        const body   = await error.context.json();
+        detail = status ? `${status}: ${body?.error ?? JSON.stringify(body)}` : (body?.error ?? detail);
       } catch { /* response body unreadable — fall back to SDK message */ }
       throw new Error(detail);
     }
