@@ -42,6 +42,16 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
+  // ── Auth check ───────────────────────────────────────────────────────────────
+  // Deployed with --no-verify-jwt because the platform rejects non-JWT tokens
+  // issued by newer sb_publishable_ key projects. We verify manually instead.
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const accessToken = authHeader.replace(/^Bearer\s+/i, '');
+  if (!accessToken) return json({ error: 'Unauthorized.' }, 401);
+
+  const { data: { user }, error: authErr } = await supabase.auth.getUser(accessToken);
+  if (authErr || !user) return json({ error: 'Unauthorized — invalid token.' }, 401);
+
   // Parse request body
   let template = '';
   try {
