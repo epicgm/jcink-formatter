@@ -1,5 +1,5 @@
 /**
- * home.js — Main formatter page logic
+ * home.js — Formatter page
  * Requires config.js loaded first (sets window.SUPABASE_URL / SUPABASE_ANON_KEY)
  */
 import { createClient }     from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -18,7 +18,7 @@ const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 // Hide immediately — revealed only after session confirmed, preventing flash.
 document.body.style.visibility = 'hidden';
 
-// ── Auth guard + role ─────────────────────────────────────────────────────────
+// ── Auth guard ────────────────────────────────────────────────────────────────
 
 const { data: { session } } = await supabase.auth.getSession();
 if (!session) { window.location.replace('index.html'); throw 0; }
@@ -36,25 +36,15 @@ if (_navUsername) _navUsername.textContent = session.user.email.split('@')[0];
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 
-const charSelect      = document.getElementById('character-select');
-const tmplSelect      = document.getElementById('template-select');
+const charCardRow     = document.getElementById('character-card-row');
+const tmplCardRow     = document.getElementById('template-card-row');
 const templateField   = document.getElementById('template-field');
 const rawInput        = document.getElementById('raw-input');
 const outputEl        = document.getElementById('formatted-output');
 const copyBtn         = document.getElementById('copy-btn');
 const logoutBtn       = document.getElementById('logout-btn');
-const charStatus      = document.getElementById('char-status');
-const drawerToggle    = document.getElementById('drawer-toggle');
-const drawerClose     = document.getElementById('drawer-close');
-const builderDrawer   = document.getElementById('builder-drawer');
-const drawerBody      = document.getElementById('builder-drawer-body');
-const formatterControls = document.getElementById('formatter-controls');
-const formatterMain   = document.getElementById('formatter-main');
-const onboarding      = document.getElementById('onboarding');
-const paneTabWrite    = document.getElementById('pane-tab-write');
-const paneTabPreview  = document.getElementById('pane-tab-preview');
-const paneInput       = document.querySelector('.pane--input');
-const paneOutput      = document.querySelector('.pane--output');
+const rulesDrawerToggle = document.getElementById('rules-drawer-toggle');
+const rulesDrawerBody   = document.getElementById('rules-drawer-body');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -77,12 +67,65 @@ function cacheRead(key) {
   catch { return null; }
 }
 
+// ── Card row builders ─────────────────────────────────────────────────────────
+
+function buildCharCards(chars) {
+  charCardRow.innerHTML = '';
+
+  for (const c of chars) {
+    const id  = `char-${c.id}`;
+    const inp = document.createElement('input');
+    inp.type  = 'radio';
+    inp.name  = 'character';
+    inp.id    = id;
+    inp.value = c.id;
+    inp.className = 'sr-only';
+    inp.addEventListener('change', () => onCharacterSelect(c.id));
+
+    const lbl = document.createElement('label');
+    lbl.htmlFor   = id;
+    lbl.className = 'character-card';
+    lbl.textContent = c.name;
+
+    charCardRow.appendChild(inp);
+    charCardRow.appendChild(lbl);
+  }
+
+  // + New Character pill at end of row
+  const addLink = document.createElement('a');
+  addLink.href      = 'editor.html';
+  addLink.className = 'character-card character-card--add';
+  addLink.textContent = '+';
+  addLink.title     = 'New character';
+  charCardRow.appendChild(addLink);
+}
+
+function buildTmplCards(tmpls) {
+  tmplCardRow.innerHTML = '';
+
+  for (const t of tmpls) {
+    const id  = `tmpl-${t.id}`;
+    const inp = document.createElement('input');
+    inp.type  = 'radio';
+    inp.name  = 'template';
+    inp.id    = id;
+    inp.value = t.id;
+    inp.className = 'sr-only';
+    inp.addEventListener('change', () => onTemplateSelect(t.id));
+
+    const lbl = document.createElement('label');
+    lbl.htmlFor   = id;
+    lbl.className = 'character-card';
+    lbl.textContent = t.name;
+
+    tmplCardRow.appendChild(inp);
+    tmplCardRow.appendChild(lbl);
+  }
+}
+
 // ── Data loading ──────────────────────────────────────────────────────────────
 
 async function loadCharacters() {
-  charSelect.disabled = true;
-  charStatus.textContent = 'Loading…';
-
   let chars;
   if (_isOnline) {
     const { data, error } = await supabase
@@ -90,55 +133,38 @@ async function loadCharacters() {
       .select('id, name')
       .eq('user_id', userId)
       .order('name');
-    if (error) {
-      charStatus.textContent = 'Having trouble connecting. Your work is saved locally.';
-    }
+    if (error) console.warn('char load error', error.message);
     chars = data ?? cacheRead(CKEY_CHARS(userId)) ?? [];
     if (data) cacheWrite(CKEY_CHARS(userId), chars);
   } else {
     chars = cacheRead(CKEY_CHARS(userId)) ?? [];
   }
 
-  charSelect.innerHTML = '<option value="">— Select character —</option>';
-
-  // Show onboarding for brand-new users; show formatter for everyone else
+  // Zero characters → send to onboarding (editor)
   if (chars.length === 0) {
-    onboarding.hidden = false;
-    formatterControls.hidden = true;
-    formatterMain.hidden = true;
-    charStatus.textContent = '';
-    charSelect.disabled = false;
-    return;
+    window.location.replace('editor.html');
+    throw 0;
   }
 
-  onboarding.hidden = true;
-  formatterControls.hidden = false;
-  formatterMain.hidden = false;
+  buildCharCards(chars);
 
-  charStatus.textContent = '';
-  for (const c of chars) {
-    const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = c.name;
-    charSelect.appendChild(opt);
+  // Auto-select first character
+  const firstInput = charCardRow.querySelector('input[type=radio]');
+  if (firstInput) {
+    firstInput.checked = true;
+    await onCharacterSelect(firstInput.value);
   }
-
-  charSelect.disabled = false;
 }
 
 async function loadTemplates(characterId) {
-  _templates    = {};
-  currentTmpl   = null;
-  currentRepls  = [];
-  tmplSelect.innerHTML = '<option value="">— Select template —</option>';
-  tmplSelect.disabled  = true;
+  _templates   = {};
+  currentTmpl  = null;
+  currentRepls = [];
+  tmplCardRow.innerHTML = '';
+  templateField.hidden  = true;
+  templateField.classList.remove('template-field--visible');
 
-  if (!characterId) {
-    templateField.hidden = true;
-    return;
-  }
-
-  templateField.hidden = false;
+  if (!characterId) return;
 
   let tmpls;
   if (_isOnline) {
@@ -153,20 +179,25 @@ async function loadTemplates(characterId) {
     tmpls = cacheRead(CKEY_TMPLS(characterId)) ?? [];
   }
 
-  for (const tmpl of tmpls) {
-    _templates[tmpl.id] = tmpl;
-    const opt = document.createElement('option');
-    opt.value = tmpl.id;
-    opt.textContent = tmpl.name;
-    tmplSelect.appendChild(opt);
-  }
+  for (const t of tmpls) _templates[t.id] = t;
 
-  tmplSelect.disabled = (tmpls.length === 0);
+  if (tmpls.length === 0) return;
+
+  buildTmplCards(tmpls);
+  templateField.hidden = false;
+  // Trigger transition on next frame
+  requestAnimationFrame(() => templateField.classList.add('template-field--visible'));
+
+  // Auto-select first template
+  const firstInput = tmplCardRow.querySelector('input[type=radio]');
+  if (firstInput) {
+    firstInput.checked = true;
+    await onTemplateSelect(firstInput.value);
+  }
 }
 
 async function loadReplacements(tmpl) {
   if (!tmpl?.active_block_ids?.length) return [];
-
   if (!_isOnline) return cacheRead(CKEY_REPLS(tmpl.id)) ?? [];
 
   const ids = tmpl.active_block_ids;
@@ -178,6 +209,19 @@ async function loadReplacements(tmpl) {
   const repls = [...(userBlocks ?? []), ...(boardBlocks ?? [])];
   cacheWrite(CKEY_REPLS(tmpl.id), repls);
   return repls;
+}
+
+// ── Selection handlers ────────────────────────────────────────────────────────
+
+async function onCharacterSelect(characterId) {
+  await loadTemplates(characterId);
+  updateOutput();
+}
+
+async function onTemplateSelect(tmplId) {
+  currentTmpl  = _templates[tmplId] ?? null;
+  currentRepls = await loadReplacements(currentTmpl);
+  updateOutput();
 }
 
 // ── Formatter ─────────────────────────────────────────────────────────────────
@@ -195,11 +239,9 @@ function updateOutput() {
 // ── Clipboard ─────────────────────────────────────────────────────────────────
 
 async function copyToClipboard(text) {
-  // Primary: Clipboard API (requires HTTPS — works on GitHub Pages)
   if (navigator.clipboard?.writeText) {
     try { await navigator.clipboard.writeText(text); return true; } catch {}
   }
-  // Fallback: execCommand (iOS Safari < 13.4, older browsers)
   const ta = document.createElement('textarea');
   ta.value = text;
   ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
@@ -211,17 +253,6 @@ async function copyToClipboard(text) {
 }
 
 // ── Events ────────────────────────────────────────────────────────────────────
-
-charSelect.addEventListener('change', async () => {
-  await loadTemplates(charSelect.value);
-  updateOutput();
-});
-
-tmplSelect.addEventListener('change', async () => {
-  currentTmpl  = _templates[tmplSelect.value] ?? null;
-  currentRepls = await loadReplacements(currentTmpl);
-  updateOutput();
-});
 
 rawInput.addEventListener('input', updateOutput);
 
@@ -245,23 +276,11 @@ copyBtn.addEventListener('click', async () => {
   }
 });
 
-// ── Mobile pane tabs ──────────────────────────────────────────────────────────
-
-function activatePaneTab(active) {
-  const isWrite = active === 'input';
-  paneTabWrite.classList.toggle('active', isWrite);
-  paneTabWrite.setAttribute('aria-pressed', String(isWrite));
-  paneTabPreview.classList.toggle('active', !isWrite);
-  paneTabPreview.setAttribute('aria-pressed', String(!isWrite));
-  paneInput.classList.toggle('pane--mobile-hidden', !isWrite);
-  paneOutput.classList.toggle('pane--mobile-hidden', isWrite);
-}
-
-paneTabWrite.addEventListener('click', () => activatePaneTab('input'));
-paneTabPreview.addEventListener('click', () => {
-  activatePaneTab('output');
-  // Auto-switch to preview when user clicks — scroll output into view on mobile
-  paneOutput.scrollIntoView({ behavior: 'smooth', block: 'start' });
+// Rules drawer toggle
+rulesDrawerToggle.addEventListener('click', () => {
+  const isOpen = !rulesDrawerBody.hidden;
+  rulesDrawerBody.hidden = isOpen;
+  rulesDrawerToggle.querySelector('.rules-drawer-arrow').textContent = isOpen ? '▾' : '▴';
 });
 
 logoutBtn.addEventListener('click', async () => {
@@ -269,42 +288,6 @@ logoutBtn.addEventListener('click', async () => {
   localStorage.removeItem('inkform_role');
   window.location.href = 'index.html';
 });
-
-// ── Block builder drawer ──────────────────────────────────────────────────────
-
-let _drawerMounted = false;
-
-function openDrawer() {
-  builderDrawer.hidden = false;
-  drawerToggle.textContent = '✕ Close Builder';
-  if (!_drawerMounted) {
-    mountBlockBuilder(drawerBody, {
-      onSave: async ({ trigger, replacement_html }) => {
-        const { error } = await supabase
-          .from('user_library')
-          .insert({ user_id: userId, trigger, replacement_html });
-        if (error) throw error;
-        // Reload replacements if the current template uses auto-blocks
-        if (currentTmpl) {
-          currentRepls = await loadReplacements(currentTmpl);
-          updateOutput();
-        }
-      },
-    });
-    _drawerMounted = true;
-  }
-  builderDrawer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-function closeDrawer() {
-  builderDrawer.hidden = true;
-  drawerToggle.textContent = '+ Block Builder';
-}
-
-drawerToggle.addEventListener('click', () => {
-  builderDrawer.hidden ? openDrawer() : closeDrawer();
-});
-drawerClose.addEventListener('click', closeDrawer);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 

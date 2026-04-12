@@ -85,119 +85,80 @@
   <nav class="navbar">
     <span class="nav-logo">inkform</span>
     <div class="nav-actions">
+      <span id="nav-username" class="nav-username"></span>
+      <a href="manage.html"  class="btn-ghost">Characters</a>
       <a href="library.html" class="btn-ghost">Library</a>
-      <a href="manage.html"  class="btn-ghost">Manage</a>
       <a href="admin.html"   class="btn-ghost" id="admin-link" hidden>Admin</a>
       <button id="theme-toggle" class="btn-ghost" aria-label="Toggle dark mode">
         <span class="theme-toggle-icon">☽</span>
       </button>
-      <span id="nav-username" class="nav-username"></span>
       <button id="logout-btn" class="btn-ghost">Sign Out</button>
     </div>
   </nav>
 
-  <!-- ── Onboarding (shown when user has zero characters) ─── -->
-  <div id="onboarding" class="onboarding-wrap" hidden>
-    <div class="onboarding-card">
-      <p class="onboarding-eyebrow">Welcome to inkform</p>
-      <h1 class="onboarding-title">Let's set up your first character.</h1>
-      <p class="onboarding-subtitle">Pick whichever sounds right and we'll walk you through it.</p>
-      <div class="onboarding-options">
-        <a href="editor.html" class="onboarding-option">
-          <span class="onboarding-option-icon" aria-hidden="true">✨</span>
-          <div class="onboarding-option-body">
-            <strong>I have an existing Jcink template</strong>
-            <p>Paste your template and we'll read the formatting rules automatically.</p>
-          </div>
-          <span class="onboarding-option-arrow" aria-hidden="true">→</span>
-        </a>
-        <a href="manage.html?welcome=1" class="onboarding-option">
-          <span class="onboarding-option-icon" aria-hidden="true">✏️</span>
-          <div class="onboarding-option-body">
-            <strong>I want to build my character step by step</strong>
-            <p>Enter your character name and set up formatting rules yourself.</p>
-          </div>
-          <span class="onboarding-option-arrow" aria-hidden="true">→</span>
-        </a>
-        <a href="library.html?import=1" class="onboarding-option">
-          <span class="onboarding-option-icon" aria-hidden="true">📥</span>
-          <div class="onboarding-option-body">
-            <strong>Someone shared a character file with me</strong>
-            <p>Upload a .json export file to import characters straight away.</p>
-          </div>
-          <span class="onboarding-option-arrow" aria-hidden="true">→</span>
-        </a>
-      </div>
-    </div>
-  </div>
+  <!-- ── Formatter layout ──────────────────────────────────── -->
+  <div class="formatter-layout">
 
-  <!-- ── Character / template selectors ────────────────────── -->
-  <div class="formatter-controls" id="formatter-controls" hidden>
-    <div class="field">
-      <label class="field-label" for="character-select">Character</label>
-      <select class="dropdown" id="character-select" disabled>
-        <option value="">— Select character —</option>
-      </select>
-      <span id="char-status" class="select-status"></span>
-    </div>
-    <div class="field" id="template-field" hidden>
-      <label class="field-label" for="template-select">Template</label>
-      <select class="dropdown" id="template-select" disabled>
-        <option value="">— Select template —</option>
-      </select>
-    </div>
-    <div class="field" style="flex:0;justify-content:flex-end;">
-      <label class="field-label" style="visibility:hidden">Build</label>
-      <button id="drawer-toggle" class="btn-secondary" style="white-space:nowrap;">+ Block Builder</button>
-    </div>
-  </div>
+    <!-- LEFT: selectors + raw input -->
+    <div class="formatter-left">
 
-  <!-- ── Formatter panes ────────────────────────────────────── -->
-  <div class="formatter-main" id="formatter-main" hidden>
-
-    <!-- Mobile-only pane tab strip -->
-    <div class="pane-tabs" id="pane-tabs" aria-label="View switcher">
-      <button class="pane-tab active" id="pane-tab-write" data-pane="input" aria-pressed="true">✍ Write</button>
-      <button class="pane-tab" id="pane-tab-preview" data-pane="output" aria-pressed="false">👁 Preview</button>
-    </div>
-
-    <div class="formatter-grid">
-
-      <div class="pane pane--input">
-        <div class="pane-header">
-          <span class="field-label">Raw Post</span>
+      <div class="field">
+        <label class="field-label">Character</label>
+        <div class="card-row" id="character-card-row" role="radiogroup" aria-label="Select character">
+          <!-- injected by home.js -->
         </div>
+      </div>
+
+      <div class="field" id="template-field" hidden>
+        <label class="field-label">Template</label>
+        <div class="card-row" id="template-card-row" role="radiogroup" aria-label="Select template">
+          <!-- injected by home.js -->
+        </div>
+      </div>
+
+      <div class="field formatter-input-field">
+        <label class="field-label" for="raw-input">Raw Post</label>
         <textarea
           id="raw-input"
-          class="textarea-input"
+          class="textarea-input formatter-textarea"
           placeholder="Paste or type your raw post here…"
           spellcheck="true"
           autocorrect="on"
         ></textarea>
       </div>
 
-      <div class="pane pane--output">
-        <div class="pane-header">
+    </div>
+
+    <!-- RIGHT: output + rules drawer -->
+    <div class="formatter-right">
+
+      <div class="field formatter-output-field">
+        <div class="formatter-output-header">
           <span class="field-label">Formatted Output</span>
           <button id="copy-btn" class="btn-copy">Copy</button>
         </div>
         <div
           id="formatted-output"
-          class="output-area"
+          class="output-area formatter-output-area"
           aria-live="polite"
         ><span class="output-placeholder">Formatted output appears here…</span></div>
       </div>
 
-    </div>
-  </div>
+      <div class="rules-drawer" id="rules-drawer">
+        <button class="rules-drawer-toggle" id="rules-drawer-toggle" type="button">
+          <span>Edit Rules</span>
+          <span class="rules-drawer-arrow">▾</span>
+        </button>
+        <div class="rules-drawer-body" id="rules-drawer-body" hidden>
+          <p class="rules-drawer-hint">
+            Quick rule overrides for the selected template.
+            Full editing is in <a href="manage.html">Characters</a>.
+          </p>
+        </div>
+      </div>
 
-  <!-- ── Quick block builder drawer ───────────────────────── -->
-  <div id="builder-drawer" class="builder-drawer" hidden>
-    <div class="builder-drawer-header">
-      <span class="field-label">Quick Block Builder</span>
-      <button id="drawer-close" class="btn-ghost btn-sm">✕ Close</button>
     </div>
-    <div id="builder-drawer-body"></div>
+
   </div>
 
   <script src="config.js"></script>

@@ -403,74 +403,212 @@ input:focus { outline: none; border-color: var(--color-primary); }
   white-space: nowrap;
 }
 
-/* ── Formatter controls (selectors above panes) ─────────────────────────────── */
-.formatter-controls {
+/* ── Character / template card rows ─────────────────────────────────────────── */
+.card-row {
   display: flex;
-  gap: var(--space-md);
-  padding: var(--space-md) var(--space-lg);
-  background: var(--bg-page);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
   flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
 }
-.formatter-controls .field {
+
+@media (max-width: 640px) {
+  .card-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    /* hide scrollbar but keep function */
+    scrollbar-width: none;
+  }
+  .card-row::-webkit-scrollbar { display: none; }
+}
+
+.character-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: var(--tap-min);
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+.character-card:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+input[type="radio"]:checked + .character-card {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #FFFFFF;
+}
+
+input[type="radio"]:focus-visible + .character-card {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* + new character pill */
+.character-card--add {
+  color: var(--color-primary);
+  border-style: dashed;
+  font-size: 17px;
+  font-weight: 700;
+  padding: 10px 16px;
+}
+.character-card--add:hover {
+  background: var(--bg-accent);
+  border-style: solid;
+}
+
+/* Template field entry animation */
+.template-field--hidden,
+#template-field {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+#template-field.template-field--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Formatter two-column layout ─────────────────────────────────────────────── */
+.formatter-layout {
   flex: 1;
-  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.formatter-left,
+.formatter-right {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.formatter-left {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-lg) var(--space-lg) 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.formatter-right {
+  flex: 1;
+  overflow: hidden;
+  padding: 0 var(--space-lg) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.formatter-input-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   margin-bottom: 0;
 }
 
-/* ── Formatter grid ─────────────────────────────────────────────────────────── */
-.formatter-main {
+.formatter-textarea {
   flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  resize: none;
+  min-height: 140px;
 }
 
-/* Mobile: stacked */
-.formatter-grid {
+.formatter-output-field {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-}
-
-.pane {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
+  margin-bottom: 0;
   min-height: 0;
-  overflow: hidden;
 }
 
-.pane--input {
-  border-bottom: 1px solid var(--border);
-}
-
-.pane-header {
+.formatter-output-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-sm) var(--space-md);
-  background: var(--bg-page);
-  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-sm);
+}
+
+.formatter-output-area {
+  flex: 1;
+  min-height: 140px;
+  overflow-y: auto;
+}
+
+/* Rules drawer */
+.rules-drawer {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
   flex-shrink: 0;
 }
-
-.pane .textarea-input {
-  flex: 1;
+.rules-drawer-toggle {
+  width: 100%;
+  background: transparent;
   border: none;
-  border-radius: 0;
-  min-height: 0;
-  resize: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--color-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--tap-min);
+  border-radius: var(--radius-md);
 }
-.pane .textarea-input:focus { border-color: transparent; }
+.rules-drawer-toggle:hover { color: var(--color-text); }
+.rules-drawer-arrow { font-size: 12px; transition: transform 0.15s; }
+.rules-drawer-body {
+  padding: var(--space-md) var(--space-md) var(--space-sm);
+  border-top: 1px solid var(--border);
+}
+.rules-drawer-hint {
+  font-size: 12px;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+.rules-drawer-hint a { color: var(--color-primary); text-decoration: none; }
+.rules-drawer-hint a:hover { text-decoration: underline; }
 
-.pane .output-area {
-  flex: 1;
-  border: none;
-  border-radius: 0;
-  min-height: 0;
+/* ── Desktop two-column formatter ───────────────────────────────────────────── */
+@media (min-width: 768px) {
+  .formatter-layout {
+    flex-direction: row;
+    overflow: hidden;
+  }
+  .formatter-left {
+    flex: 0 0 40%;
+    max-width: 440px;
+    border-right: 1px solid var(--border);
+    padding: var(--space-lg);
+    overflow-y: auto;
+  }
+  .formatter-right {
+    flex: 1;
+    padding: var(--space-lg);
+    overflow: hidden;
+  }
+}
+
+@media (min-width: 1200px) {
+  .formatter-left { flex: 0 0 38%; max-width: 480px; }
 }
 
 /* ── Parser output tokens ───────────────────────────────────────────────────── */
@@ -1791,53 +1929,6 @@ input:focus { outline: none; border-color: var(--color-primary); }
   transform: translateX(3px);
 }
 
-/* ── Mobile pane tab strip (hidden on desktop) ──────────────────────────────── */
-.pane-tabs {
-  display: flex;
-  background: var(--bg-page);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.pane-tab {
-  flex: 1;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 10px var(--space-md);
-  font-size: 13px;
-  font-weight: 600;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  color: var(--color-muted);
-  cursor: pointer;
-  min-height: var(--tap-min);
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.pane-tab.active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-}
-
-/* On mobile, use pane hidden class to show one at a time */
-@media (max-width: 639px) {
-  .pane--mobile-hidden {
-    display: none !important;
-  }
-
-  /* When only one pane is shown, give it full height */
-  .pane--input:not(.pane--mobile-hidden),
-  .pane--output:not(.pane--mobile-hidden) {
-    flex: 1;
-  }
-}
-
-/* On desktop, hide the tab strip — both panes always visible */
-@media (min-width: 640px) {
-  .pane-tabs { display: none; }
-  .pane--mobile-hidden { display: flex !important; }
-}
-
 /* ── Copy button: raise to 44px tap minimum ─────────────────────────────────── */
 .btn-copy {
   min-height: var(--tap-min);
@@ -1850,23 +1941,9 @@ input:focus { outline: none; border-color: var(--color-primary); }
   .nav-actions { gap: 4px; }
   .btn-ghost { padding: 6px 10px; font-size: 12px; }
   .nav-logo { font-size: 15px; }
-  .formatter-controls { padding: var(--space-sm) var(--space-md); gap: var(--space-sm); }
 }
 
-/* ── Tablet+: side-by-side panes (640px) ───────────────────────────────────── */
+/* ── Tablet+: login card wider ──────────────────────────────────────────────── */
 @media (min-width: 640px) {
   .login-card { padding: 44px 40px; }
-
-  .formatter-grid {
-    flex-direction: row;
-  }
-  .pane--input {
-    border-bottom: none;
-    border-right: 1px solid var(--border);
-  }
-}
-
-/* ── Desktop (1024px) ───────────────────────────────────────────────────────── */
-@media (min-width: 1024px) {
-  .formatter-controls { padding: var(--space-md) var(--space-xl); }
 }

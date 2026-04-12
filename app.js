@@ -92,7 +92,13 @@ if (loginForm) {
     const role = profile?.role ?? 'user';
     localStorage.setItem('inkform_role', role);
 
-    window.location.href = 'home.html';
+    // Route based on whether the user has any characters set up.
+    const { count } = await supabase
+      .from('characters')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', uid);
+
+    window.location.href = (count === 0) ? 'editor.html' : 'home.html';
   }
 
   // Primary trigger: click the Sign In button
