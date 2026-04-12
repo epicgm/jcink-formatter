@@ -3,7 +3,7 @@
  * Requires config.js loaded first (sets window.SUPABASE_URL / SUPABASE_ANON_KEY)
  */
 import { createClient }     from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { formatPost }       from './parser.js';
+import { formatPost, convertBBCodeToHTML } from './parser.js';
 import { mountBlockBuilder } from './block-builder.js';
 import {
   checkOnline,
@@ -237,13 +237,17 @@ function updateOutput() {
     rules:        currentTmpl?.rules_json ?? {},
   });
 
-  // Store the full output (including [dohtml] tags) for the copy button.
-  // Strip [dohtml]/[/dohtml] only for the visual preview — they are Jcink
-  // rendering directives that don't belong in an HTML preview pane.
+  // _copyContent keeps the full BBCode output (including [dohtml] tags) so
+  // the copy button pastes correctly into Jcink.
   _copyContent = formatted;
-  const display = formatted
-    .replace(/\[dohtml\]/gi, '')
-    .replace(/\[\/dohtml\]/gi, '');
+
+  // For the live preview: strip [dohtml] directives (Jcink-only) then
+  // convert BBCode tags to inline HTML so the preview renders visually.
+  const display = convertBBCodeToHTML(
+    formatted
+      .replace(/\[dohtml\]/gi, '')
+      .replace(/\[\/dohtml\]/gi, '')
+  );
 
   outputEl.innerHTML = display || '<span class="output-placeholder">Formatted output appears here…</span>';
 }
@@ -335,9 +339,9 @@ function renderRulesDrawer() {
         rules: draft,
       });
       _copyContent = preview;
-      const display = preview
-        .replace(/\[dohtml\]/gi, '')
-        .replace(/\[\/dohtml\]/gi, '');
+      const display = convertBBCodeToHTML(
+        preview.replace(/\[dohtml\]/gi, '').replace(/\[\/dohtml\]/gi, '')
+      );
       outputEl.innerHTML = display || '<span class="output-placeholder">Formatted output appears here…</span>';
     });
 
