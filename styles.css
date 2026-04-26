@@ -2355,6 +2355,31 @@ input[type="radio"]:focus-visible + .character-card {
 
 .wysiwyg-raw-field {}
 
+/* ── Shell warning banner ────────────────────────────────────────────────────── */
+
+.shell-warning-banner {
+  background:    #FFF8E1;
+  border:        1.5px solid #F9A825;
+  border-radius: var(--radius-md);
+  padding:       10px 14px;
+  font-size:     12px;
+  color:         #5D4037;
+  margin-bottom: 12px;
+  line-height:   1.5;
+}
+.shell-warning-banner a {
+  color:           #5D4037;
+  text-decoration: underline;
+}
+[data-theme="dark"] .shell-warning-banner {
+  background: #3B2E00;
+  border-color: #F9A825;
+  color:       #FFE082;
+}
+[data-theme="dark"] .shell-warning-banner a {
+  color: #FFE082;
+}
+
 /* ── Insert Block panel ──────────────────────────────────────────────────────── */
 
 .insert-block-panel {

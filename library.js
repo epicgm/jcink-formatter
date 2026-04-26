@@ -26,7 +26,7 @@ if (!session) { window.location.replace('index.html'); throw 0; }
 const userId = session.user.id;
 
 const _adminLink = document.getElementById('admin-link');
-if (_adminLink && localStorage.getItem('inkform_role') === 'admin') _adminLink.hidden = false;
+if (_adminLink && (sessionStorage.getItem('userRole') ?? localStorage.getItem('inkform_role')) === 'admin') _adminLink.hidden = false;
 
 const _navUsername = document.getElementById('nav-username');
 if (_navUsername) _navUsername.textContent = session.user.email.split('@')[0];
@@ -119,6 +119,7 @@ if (document.documentElement.getAttribute('data-theme') === 'dark') {
 logoutBtn.addEventListener('click', async () => {
   await supabase.auth.signOut();
   localStorage.removeItem('inkform_role');
+  sessionStorage.removeItem('userRole');
   window.location.href = 'index.html';
 });
 

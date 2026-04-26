@@ -83,6 +83,7 @@ if (document.documentElement.getAttribute('data-theme') === 'dark') {
 logoutBtn.addEventListener('click', async () => {
   await supabase.auth.signOut();
   localStorage.removeItem('inkform_role');
+  sessionStorage.removeItem('userRole');
   window.location.href = 'index.html';
 });
 

@@ -91,6 +91,7 @@ if (loginForm) {
     // ── 4. Persist role so every page can show the Admin nav link ─────────────
     const role = profile?.role ?? 'user';
     localStorage.setItem('inkform_role', role);
+    sessionStorage.setItem('userRole', role);
 
     // Route based on whether the user has any characters set up.
     const { count } = await supabase

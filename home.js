@@ -27,7 +27,7 @@ const userId = session.user.id;
 
 // Show Admin nav link for admin users
 const _adminLink = document.getElementById('admin-link');
-if (_adminLink && localStorage.getItem('inkform_role') === 'admin') {
+if (_adminLink && (sessionStorage.getItem('userRole') ?? localStorage.getItem('inkform_role')) === 'admin') {
   _adminLink.hidden = false;
 }
 
@@ -44,8 +44,9 @@ const rawInput        = document.getElementById('raw-input');
 const outputEl        = document.getElementById('formatted-output');
 const copyBtn         = document.getElementById('copy-btn');
 const logoutBtn       = document.getElementById('logout-btn');
-const rulesDrawerToggle = document.getElementById('rules-drawer-toggle');
-const rulesDrawerBody   = document.getElementById('rules-drawer-body');
+const rulesDrawerToggle  = document.getElementById('rules-drawer-toggle');
+const rulesDrawerBody    = document.getElementById('rules-drawer-body');
+const shellWarningBanner = document.getElementById('shell-warning-banner');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -226,6 +227,10 @@ async function onTemplateSelect(tmplId) {
   currentTmpl  = _templates[tmplId] ?? null;
   currentRepls = await loadReplacements(currentTmpl);
   updateOutput();
+  // Show amber warning when selected template has no shell HTML
+  if (shellWarningBanner) {
+    shellWarningBanner.hidden = !!(currentTmpl?.shell_html);
+  }
   // Refresh drawer if it's open
   if (!rulesDrawerBody.hidden) renderRulesDrawer();
 }
@@ -401,6 +406,7 @@ rulesDrawerToggle.addEventListener('click', () => {
 logoutBtn.addEventListener('click', async () => {
   await supabase.auth.signOut();
   localStorage.removeItem('inkform_role');
+  sessionStorage.removeItem('userRole');
   window.location.href = 'index.html';
 });
 
