@@ -59,10 +59,20 @@ export function mountBlockBuilder(container, { onSave } = {}) {
   const saveBtn   = container.querySelector('.bb-save');
   const status    = container.querySelector('.bb-status');
 
+  // Convert Jcink bracket-HTML ([div], [span], etc.) to real HTML for preview.
+  // Real angle-bracket HTML passes through unchanged.
+  function toPreviewHtml(str) {
+    return str
+      .replace(/\[([a-zA-Z][a-zA-Z0-9-]*)(\s[^\]]*)?]/g, '<$1$2>')
+      .replace(/\[\/([a-zA-Z][a-zA-Z0-9-]*)\]/g, '</$1>');
+  }
+
   // Live preview — renders user's own HTML (intentional, no sanitisation needed)
   htmlIn.addEventListener('input', () => {
-    preview.innerHTML = htmlIn.value.trim()
-      || '<span class="output-placeholder">Preview appears here…</span>';
+    const val = htmlIn.value.trim();
+    preview.innerHTML = val
+      ? toPreviewHtml(val)
+      : '<span class="output-placeholder">Preview appears here…</span>';
   });
 
   saveBtn.addEventListener('click', async () => {

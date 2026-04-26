@@ -67,6 +67,9 @@ if (_editCharId) {
   const titleEl = document.querySelector('.editor-title');
   if (titleEl) titleEl.textContent = 'Edit Character';
   saveBtn.textContent = 'Save Changes';
+  // Renumber template section since rules is now "2"
+  const tmplHeading = document.getElementById('template-section-heading');
+  if (tmplHeading) tmplHeading.textContent = '3 — Paste existing template';
 
   // Load character name
   const { data: charRow } = await supabase
@@ -92,12 +95,26 @@ if (_editCharId) {
   }
 
   // Always show the rule editor in edit mode.
-  // Pass existing rules if present; empty object if none saved yet.
-  // This is the fix for the "no rules shown" bug — the gate
-  // `if (rules_json && keys.length)` was swallowing null/empty rule sets.
   showExistingRulesSection(tmpl?.rules_json ?? {});
 
   updateSaveBtn();
+}
+
+// ── New-character mode: also show WYSIWYG rules section (manual entry) ────────
+
+if (!_editCharId) {
+  // Update heading + hint for create context
+  const h = existingRulesSection?.querySelector('.section-heading');
+  if (h) h.textContent = '2 — Formatting rules (optional)';
+  const hint = existingRulesSection?.querySelector('.section-hint');
+  if (hint) hint.textContent = 'Set dialogue and thought formatting manually, or paste a template below to extract rules automatically.';
+  // Hide re-extract row — not relevant when creating
+  const reextractRow = existingRulesSection?.querySelector('.existing-rules-actions');
+  if (reextractRow) reextractRow.hidden = true;
+  // Renumber template section since rules is now "2"
+  const tmplHeadingNew = document.getElementById('template-section-heading');
+  if (tmplHeadingNew) tmplHeadingNew.textContent = '3 — Paste existing template';
+  showExistingRulesSection({});
 }
 
 // ── Re-extract button (shown in existing-rules section) ──────────────────────
@@ -129,6 +146,8 @@ function showExistingRulesSection(rules) {
   // Mount one WYSIWYG group per rule type, using the shared utility
   for (const group of WYSIWYG_RULE_GROUPS) {
     const section = makeWysiwygGroup(group, _editedRulesJson, (openKey, openVal, closeKey, closeVal) => {
+      // Re-initialise if extraction cleared the draft
+      if (_editedRulesJson === null) _editedRulesJson = {};
       _editedRulesJson[openKey]  = openVal;
       _editedRulesJson[closeKey] = closeVal;
       updateSaveBtn();
@@ -621,8 +640,13 @@ function updateSaveBtn() {
   if (!hasCharName) {
     saveStatus.textContent = 'Enter a character name to save.';
   } else if (_editedRulesJson !== null) {
-    // Edit mode: rules edited via WYSIWYG — always ready
-    saveStatus.textContent = hasEditedRules ? '✎ Rules ready to save.' : 'Rules cleared — will save blank rules.';
+    if (hasEditedRules) {
+      saveStatus.textContent = '✎ Rules ready to save.';
+    } else if (_editCharId) {
+      saveStatus.textContent = 'Rules cleared — will save blank rules.';
+    } else {
+      saveStatus.textContent = 'No rules set yet — save as-is or paste a template to extract.';
+    }
   } else {
     saveStatus.textContent = hasAnyConfirmed
       ? `${cardStates.filter(s => s.status === 'confirmed').length} item(s) confirmed.`

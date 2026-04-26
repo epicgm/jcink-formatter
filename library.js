@@ -168,7 +168,7 @@ mountBlockBuilder(builderWrap, {
     } else {
       const { error } = await supabase
         .from('user_library')
-        .insert({ user_id: userId, trigger, replacement_html });
+        .insert({ user_id: userId, trigger, display_name: trigger, replacement_html });
       if (error) throw error;
     }
     await loadMyLibrary();
