@@ -2550,3 +2550,314 @@ input[type="radio"]:focus-visible + .character-card {
 }
 .rules-save-status.feedback--success { color: var(--color-teal); }
 .rules-save-status.feedback--error   { color: var(--color-danger); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   BUNDLE B — Tabbed character editor (ce-*)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page shell ──────────────────────────────────────────────────────────────── */
+.ce-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px); /* below navbar */
+  overflow: hidden;
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────────────── */
+.ce-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--bg-page);
+  border-bottom: var(--border-width) solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.ce-char-name {
+  font-size: 15px;
+  font-weight: 600;
+  min-width: 140px;
+  max-width: 220px;
+  flex-shrink: 0;
+}
+
+.ce-tmpl-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ce-tmpl-row::-webkit-scrollbar { display: none; }
+
+.ce-tmpl-chips { display: flex; gap: 6px; align-items: center; }
+
+.ce-tmpl-chip-wrap { position: relative; }
+
+.ce-tmpl-chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: var(--border-width) solid var(--border);
+  background: var(--bg-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  user-select: none;
+}
+.ce-tmpl-chip:hover { background: var(--bg-accent); border-color: var(--color-primary); }
+.ce-tmpl-chip.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.ce-add-tmpl {
+  flex-shrink: 0;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ce-save-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ── Tabs bar ────────────────────────────────────────────────────────────────── */
+.ce-tabs-bar {
+  display: flex;
+  border-bottom: var(--border-width) solid var(--border);
+  background: var(--bg-page);
+  flex-shrink: 0;
+  padding: 0 16px;
+  gap: 0;
+}
+
+.ce-tab {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2.5px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.ce-tab:hover { color: var(--color-text); }
+.ce-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* ── Two-pane body ───────────────────────────────────────────────────────────── */
+.ce-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.ce-content-pane {
+  overflow-y: auto;
+  padding: 20px 20px 32px;
+  border-right: var(--border-width) solid var(--border);
+}
+
+.ce-tab-panel { }
+
+.ce-preview-pane {
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ce-preview-label { flex-shrink: 0; }
+.ce-preview-output {
+  flex: 1;
+  background: var(--bg-page);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+
+/* ── Rules tab ───────────────────────────────────────────────────────────────── */
+.rules-actions-bar {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+.rule-type-pick-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+}
+.rule-type-pick-btn:hover { background: var(--bg-accent); }
+
+/* ── Re-extract collapsed area ───────────────────────────────────────────────── */
+.reextract-details {
+  margin-top: 24px;
+  border-top: var(--border-width) solid var(--border);
+  padding-top: 16px;
+}
+.reextract-summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-muted);
+  user-select: none;
+  list-style: none;
+}
+.reextract-summary::-webkit-details-marker { display: none; }
+.reextract-summary:hover { color: var(--color-text); }
+.reextract-body {
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.reextract-textarea { min-height: 130px; }
+.reextract-footer { display: flex; align-items: center; gap: 10px; }
+
+/* ── Shell tab raw ───────────────────────────────────────────────────────────── */
+.shell-raw-details { margin-top: 20px; border-top: var(--border-width) solid var(--border); padding-top: 14px; }
+.shell-raw-summary { cursor: pointer; user-select: none; font-size: 13px; }
+.shell-raw-summary::-webkit-details-marker { display: none; }
+
+/* ── Blocks tab ──────────────────────────────────────────────────────────────── */
+.block-toggle-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.block-toggle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.block-toggle-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: var(--border-width) solid var(--border);
+  background: var(--bg-surface);
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.block-toggle-chip:hover { border-color: var(--color-primary); color: var(--color-text); }
+.block-toggle-chip.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+.block-toggle-sub {
+  font-size: 11px;
+  color: var(--color-muted);
+  padding-left: 8px;
+  font-family: var(--font-mono, monospace);
+}
+.blocks-lib-link {
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+.blocks-lib-link a { color: var(--color-primary); text-decoration: none; }
+.blocks-lib-link a:hover { text-decoration: underline; }
+
+/* ── Context menu ────────────────────────────────────────────────────────────── */
+.ctx-menu {
+  position: fixed;
+  z-index: 1000;
+  background: var(--bg-page);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 150px;
+  padding: 4px 0;
+}
+.ctx-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 16px;
+  font-size: 13px;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+}
+.ctx-menu-item:hover { background: var(--bg-accent); }
+.ctx-menu-item--danger { color: var(--color-danger); }
+.ctx-menu-item--danger:hover { background: #fff0f0; }
+.ctx-menu-sep { border: none; border-top: var(--border-width) solid var(--border); margin: 4px 0; }
+
+/* ── Duplicate dialog: char picker ───────────────────────────────────────────── */
+.dup-char-grid {
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* ── Radio options (shared) ──────────────────────────────────────────────────── */
+.radio-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.radio-option input[type=radio] { margin-top: 2px; flex-shrink: 0; }
+
+/* ── Mobile: stack panes ─────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .ce-main { height: auto; overflow: visible; }
+  .ce-body {
+    grid-template-columns: 1fr;
+    overflow: visible;
+    flex: none;
+  }
+  .ce-content-pane { border-right: none; border-bottom: var(--border-width) solid var(--border); overflow-y: visible; }
+  .ce-preview-pane { overflow-y: visible; min-height: 300px; }
+  .ce-topbar { flex-wrap: wrap; }
+  .ce-char-name { max-width: 100%; }
+  .ce-tmpl-row { width: 100%; }
+}

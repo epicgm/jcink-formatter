@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>New Character — inkform</title>
+  <title>Character Editor — inkform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -12,7 +12,7 @@
 </head>
 <body class="app-body">
 
-  <!-- ── Background illustration ────────────────────────────── -->
+  <!-- ── Background illustration ──────────────────────────────── -->
   <div class="bg-illustration" aria-hidden="true">
     <svg viewBox="0 0 300 380" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <rect width="300" height="380" fill="#FDF8F0"/>
@@ -46,7 +46,7 @@
       <ellipse cx="258" cy="200" rx="32" ry="26" fill="#F9C84A" opacity="0.09"/>
       <ellipse cx="258" cy="210" rx="18" ry="14" fill="#F9C84A" opacity="0.07"/>
       <rect x="251" y="208" width="13" height="25" fill="#E8D8B0" rx="2"/>
-      <line  x1="257" y1="208" x2="258" y2="203" stroke="#3A2010" stroke-width="1.2"/>
+      <line x1="257" y1="208" x2="258" y2="203" stroke="#3A2010" stroke-width="1.2"/>
       <ellipse cx="258" cy="196" rx="6"   ry="9"   fill="#F9C84A" opacity="0.88"/>
       <ellipse cx="258" cy="198" rx="3.5" ry="6"   fill="#FDE88A"/>
       <ellipse cx="258" cy="201" rx="1.8" ry="3"   fill="#FFFFFF" opacity="0.9"/>
@@ -62,16 +62,16 @@
       <rect x="160" y="284" width="16" height="44" fill="#2D6B5B" rx="1.5"/>
       <rect x="177" y="280" width="22" height="48" fill="#8A5A2A" rx="1.5"/>
       <ellipse cx="248" cy="325" rx="13" ry="4.5" fill="#1E1830" opacity="0.35"/>
-      <path  d="M235 295 Q235 302 235 315 Q235 328 248 328 Q261 328 261 315 Q261 302 261 295 Q261 287 248 286 Q235 287 235 295Z" fill="#1E1830"/>
+      <path d="M235 295 Q235 302 235 315 Q235 328 248 328 Q261 328 261 315 Q261 302 261 295 Q261 287 248 286 Q235 287 235 295Z" fill="#1E1830"/>
       <ellipse cx="248" cy="286" rx="10" ry="4.5" fill="#2A2050"/>
-      <line  x1="248" y1="283" x2="278" y2="255"  stroke="#C8A870" stroke-width="2.2" stroke-linecap="round"/>
-      <path  d="M278 255 C272 250 274 244 280 246 C284 243 287 249 278 255Z" fill="#C8A870"/>
+      <line x1="248" y1="283" x2="278" y2="255" stroke="#C8A870" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M278 255 C272 250 274 244 280 246 C284 243 287 249 278 255Z" fill="#C8A870"/>
       <rect x="0" y="335" width="300" height="45" fill="#C8A87A" opacity="0.13"/>
     </svg>
     <div class="bg-overlay"></div>
   </div>
 
-  <!-- ── Navbar ──────────────────────────────────────────────── -->
+  <!-- ── Navbar ────────────────────────────────────────────────── -->
   <nav class="navbar">
     <span class="nav-logo">inkform</span>
     <div class="nav-actions">
@@ -79,6 +79,7 @@
       <a href="home.html"    class="btn-ghost">Formatter</a>
       <a href="manage.html"  class="btn-ghost">Characters</a>
       <a href="library.html" class="btn-ghost">Library</a>
+      <a href="admin.html"   class="btn-ghost" id="admin-link" hidden>Admin</a>
       <button id="theme-toggle" class="btn-ghost" aria-label="Toggle dark mode">
         <span class="theme-toggle-icon">☽</span>
       </button>
@@ -86,100 +87,178 @@
     </div>
   </nav>
 
-  <!-- ── Main content ───────────────────────────────────────── -->
-  <div class="editor-scroll">
-    <div class="editor-container">
+  <!-- ── Editor shell ───────────────────────────────────────────── -->
+  <main class="ce-main">
 
-      <div class="editor-header">
-        <h1 class="editor-title">New Character</h1>
-        <p class="editor-subtitle">Paste an existing Jcink template to auto-detect shell HTML and formatting rules, or fill in the fields manually.</p>
+    <!-- Top bar: char name | template chips | save -->
+    <div class="ce-topbar">
+      <input
+        id="char-name-input"
+        type="text"
+        class="ce-char-name input"
+        placeholder="Character name…"
+        autocomplete="off"
+        maxlength="100"
+      />
+      <div class="ce-tmpl-row">
+        <div class="ce-tmpl-chips" id="ce-tmpl-chips" role="radiogroup" aria-label="Templates">
+          <!-- chips injected by JS -->
+        </div>
+        <button id="add-tmpl-btn" class="btn-ghost btn-sm ce-add-tmpl" title="New template">+</button>
+      </div>
+      <div class="ce-save-row">
+        <span id="save-status" class="save-status" aria-live="polite"></span>
+        <button id="save-btn" class="btn-primary">Save</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="ce-tabs-bar" role="tablist">
+      <button class="ce-tab active" data-tab="rules" role="tab" aria-selected="true">Rules</button>
+      <button class="ce-tab" data-tab="shell" role="tab" aria-selected="false">Shell</button>
+      <button class="ce-tab" data-tab="blocks" role="tab" aria-selected="false">Blocks</button>
+    </div>
+
+    <!-- Two-pane body -->
+    <div class="ce-body">
+
+      <!-- Left: tab content -->
+      <div class="ce-content-pane">
+
+        <!-- Rules panel -->
+        <div id="tab-rules" class="ce-tab-panel" role="tabpanel">
+          <div id="rules-content"></div>
+          <div class="rules-actions-bar" id="rules-actions-bar">
+            <button id="add-rule-btn" class="btn-ghost btn-sm">+ Add rule</button>
+          </div>
+          <!-- Re-extract (secondary, collapsed) -->
+          <details class="reextract-details" id="reextract-details">
+            <summary class="reextract-summary">↓ Re-extract from template</summary>
+            <div class="reextract-body">
+              <p class="section-hint">Paste your full [dohtml]…[/dohtml] template. Claude will identify dialogue and thought rules and update the cards above.</p>
+              <textarea
+                id="template-input"
+                class="textarea-input textarea--mono reextract-textarea"
+                rows="7"
+                placeholder="Paste your full [dohtml]...[/dohtml] template here"
+                spellcheck="false"
+              ></textarea>
+              <div class="reextract-footer">
+                <button id="extract-btn" class="btn-primary btn-sm" disabled>Extract Rules</button>
+                <span id="extract-hint" class="field-hint">Enter a template to extract rules.</span>
+              </div>
+              <div id="extract-spinner" class="spinner-wrap" hidden>
+                <span class="spinner" aria-label="Extracting…"></span>
+                <span class="spinner-label">Asking Claude…</span>
+              </div>
+              <p id="extract-error" class="error-message" role="alert" hidden></p>
+              <div id="result-cards" class="result-cards"></div>
+              <div id="unknown-section" hidden>
+                <h3 class="subsection-heading">Unclassified</h3>
+                <ul id="unknown-list" class="unknown-list"></ul>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <!-- Shell panel -->
+        <div id="tab-shell" class="ce-tab-panel" hidden role="tabpanel">
+          <div id="shell-content"></div>
+        </div>
+
+        <!-- Blocks panel -->
+        <div id="tab-blocks" class="ce-tab-panel" hidden role="tabpanel">
+          <div id="blocks-content"></div>
+        </div>
+
       </div>
 
-      <!-- ── Step 1: Identity ─────────────────────────────── -->
-      <section class="editor-section">
-        <h2 class="section-heading">1 — Character details</h2>
-        <div class="editor-fields">
-          <div class="field">
-            <label class="field-label" for="char-name-input">Character name</label>
-            <input type="text" id="char-name-input" class="input" placeholder="e.g. Talia Voss" autocomplete="off" maxlength="100" required />
-          </div>
-          <div class="field">
-            <label class="field-label" for="tmpl-name-input">Template name</label>
-            <input type="text" id="tmpl-name-input" class="input" placeholder="e.g. Default" autocomplete="off" maxlength="100" value="Default" />
-          </div>
+      <!-- Right: live preview -->
+      <div class="ce-preview-pane">
+        <p class="field-label ce-preview-label">Live Preview</p>
+        <div id="live-preview" class="ce-preview-output">
+          <span class="output-placeholder">Select a template to see a preview…</span>
         </div>
-      </section>
-
-      <!-- ── Step 1b: Edit rules (edit mode only — always shown when character_id in URL) ── -->
-      <section class="editor-section" id="existing-rules-section" hidden>
-        <h2 class="section-heading">2 — Edit rules</h2>
-        <p class="section-hint">Edit your formatting rules below, then click <strong>Save Changes</strong>. To rebuild rules from the template HTML, use the <strong>Re-extract</strong> button at the bottom.</p>
-        <div id="existing-rules-content" class="existing-rules-list"></div>
-        <div class="existing-rules-actions">
-          <button type="button" id="reextract-btn" class="btn-ghost btn-sm">
-            ↓ Re-extract from template
-          </button>
-          <span class="reextract-hint">Runs AI extraction from the template below and replaces the rules above</span>
-        </div>
-      </section>
-
-      <!-- ── Step 2: Template paste + extraction ──────────── -->
-      <section class="editor-section" id="template-section">
-        <h2 class="section-heading" id="template-section-heading">2 — Paste existing template</h2>
-        <p class="section-hint">Paste the full dohtml block. Claude will identify your shell HTML, dialogue rules, thought rules, and flag anything it can't classify.</p>
-
-        <div class="field">
-          <label class="field-label" for="template-input">Raw Jcink template</label>
-          <textarea
-            id="template-input"
-            class="textarea-input textarea--mono"
-            rows="10"
-            placeholder="Paste your full [dohtml]...[/dohtml] template here"
-            spellcheck="false"
-          ></textarea>
-        </div>
-
-        <div class="extract-row">
-          <button id="extract-btn" class="btn-primary" disabled>Extract Rules</button>
-          <span id="extract-hint" class="select-status">Enter a template to extract rules.</span>
-        </div>
-      </section>
-
-      <!-- ── Step 3: Extraction results ─────────────────── -->
-      <section class="editor-section" id="results-section" hidden>
-        <h2 class="section-heading">3 — Review extracted rules</h2>
-        <p class="section-hint">Confirm, reclassify, or skip each detected item. Confirmed items will be saved to the template.</p>
-
-        <!-- Spinner -->
-        <div id="extract-spinner" class="spinner-wrap" hidden>
-          <span class="spinner" aria-label="Extracting…"></span>
-          <span class="spinner-label">Asking Claude…</span>
-        </div>
-
-        <!-- Error banner -->
-        <div id="extract-error" class="error-message" role="alert"></div>
-
-        <!-- Result cards grid -->
-        <div id="result-cards" class="result-cards"></div>
-
-        <!-- Unknown patterns (if any) -->
-        <div id="unknown-section" hidden>
-          <h3 class="subsection-heading">Unknown patterns</h3>
-          <p class="section-hint">Claude could not classify these. Review them manually.</p>
-          <ul id="unknown-list" class="unknown-list"></ul>
-        </div>
-      </section>
-
-      <!-- ── Step 4: Save ────────────────────────────────── -->
-      <section class="editor-section" id="save-section">
-        <div class="save-row">
-          <button id="save-btn" class="btn-primary save-btn" disabled>Create Character &amp; Template</button>
-          <p id="save-status" class="save-status" aria-live="polite"></p>
-        </div>
-      </section>
+      </div>
 
     </div>
+  </main>
+
+  <!-- ── Context menu ───────────────────────────────────────────── -->
+  <div id="tmpl-context-menu" class="ctx-menu" hidden role="menu">
+    <button class="ctx-menu-item" id="ctx-rename" role="menuitem">Rename</button>
+    <button class="ctx-menu-item" id="ctx-duplicate" role="menuitem">Duplicate</button>
+    <hr class="ctx-menu-sep" />
+    <button class="ctx-menu-item ctx-menu-item--danger" id="ctx-delete" role="menuitem">Delete</button>
   </div>
+
+  <!-- ── Rename template dialog ──────────────────────────────────── -->
+  <dialog id="rename-dialog" class="manage-dialog">
+    <div class="dialog-inner">
+      <h2 class="dialog-title">Rename template</h2>
+      <div class="field">
+        <label class="field-label" for="rename-input">Template name</label>
+        <input type="text" id="rename-input" class="input" maxlength="80" />
+      </div>
+      <div class="dialog-footer">
+        <button type="button" class="btn-ghost dialog-cancel">Cancel</button>
+        <button type="button" id="rename-confirm-btn" class="btn-primary">Rename</button>
+      </div>
+      <p id="rename-status" class="status-text" aria-live="polite"></p>
+    </div>
+  </dialog>
+
+  <!-- ── Duplicate template dialog ───────────────────────────────── -->
+  <dialog id="duplicate-dialog" class="manage-dialog">
+    <div class="dialog-inner">
+      <h2 class="dialog-title">Duplicate template</h2>
+      <div class="field">
+        <p class="field-label" style="margin-bottom:8px">Copy destination</p>
+        <label class="radio-option">
+          <input type="radio" name="dup-dest" value="same" id="dup-dest-same" checked />
+          <span>Within <strong id="dup-char-label"></strong> — creates "<em id="dup-name-preview"></em>"</span>
+        </label>
+        <label class="radio-option" style="margin-top:6px">
+          <input type="radio" name="dup-dest" value="other" id="dup-dest-other" />
+          <span>Copy to another character</span>
+        </label>
+        <div id="dup-char-grid" class="dup-char-grid" hidden></div>
+      </div>
+      <div class="dialog-footer">
+        <button type="button" class="btn-ghost dialog-cancel">Cancel</button>
+        <button type="button" id="dup-confirm-btn" class="btn-primary">Duplicate</button>
+      </div>
+      <p id="dup-status" class="status-text" aria-live="polite"></p>
+    </div>
+  </dialog>
+
+  <!-- ── New template dialog ─────────────────────────────────────── -->
+  <dialog id="new-tmpl-dialog" class="manage-dialog">
+    <div class="dialog-inner">
+      <h2 class="dialog-title">New template</h2>
+      <div class="field">
+        <label class="field-label" for="new-tmpl-name">Template name</label>
+        <input type="text" id="new-tmpl-name" class="input" placeholder="e.g. Multiverse" maxlength="80" />
+      </div>
+      <div class="dialog-footer">
+        <button type="button" class="btn-ghost dialog-cancel">Cancel</button>
+        <button type="button" id="new-tmpl-confirm" class="btn-primary">Create</button>
+      </div>
+      <p id="new-tmpl-status" class="status-text" aria-live="polite"></p>
+    </div>
+  </dialog>
+
+  <!-- ── Add rule dialog ─────────────────────────────────────────── -->
+  <dialog id="add-rule-dialog" class="manage-dialog">
+    <div class="dialog-inner">
+      <h2 class="dialog-title">Add rule</h2>
+      <p class="section-hint" style="margin-bottom:12px">Choose a rule type to add formatting controls for.</p>
+      <div id="rule-type-options" class="rule-type-options"></div>
+      <div class="dialog-footer" style="margin-top:16px">
+        <button type="button" class="btn-ghost dialog-cancel">Cancel</button>
+      </div>
+    </div>
+  </dialog>
 
   <script src="config.js"></script>
   <script type="module" src="editor.js"></script>
