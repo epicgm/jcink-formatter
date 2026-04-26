@@ -105,7 +105,12 @@ body {
 [data-theme='dark'] .bg-overlay { opacity: 0.50; }
 
 /* Everything above the illustration */
-.navbar, header, main, .login-wrapper { position: relative; z-index: 1; }
+.navbar, header, main, .login-wrapper,
+.editor-scroll, .manage-content, .onboarding-wrap,
+.formatter-layout, .manage-content, .page-content {
+  position: relative;
+  z-index: 1;
+}
 
 /* ── Field label + input pair ───────────────────────────────────────────────── */
 .field {
@@ -401,6 +406,9 @@ input:focus { outline: none; border-color: var(--color-primary); }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-variant: normal;
+  font-variant-caps: normal;
+  text-transform: none;
 }
 
 /* ── Character / template card rows ─────────────────────────────────────────── */
@@ -435,6 +443,9 @@ input:focus { outline: none; border-color: var(--color-primary); }
   font-size: 13px;
   font-weight: 600;
   font-family: 'Plus Jakarta Sans', sans-serif;
+  font-variant: normal;
+  font-variant-caps: normal;
+  text-transform: none;
   cursor: pointer;
   white-space: nowrap;
   min-height: var(--tap-min);
@@ -609,6 +620,83 @@ input[type="radio"]:focus-visible + .character-card {
   flex: 1;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════════
+   MOBILE — full page-scroll mode (< 768px)
+   All pages switch from the locked app-shell layout to a natural page scroll.
+   The navbar stays sticky via position:sticky; all inner scroll traps are
+   released so users can scroll the page with a single gesture anywhere.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+
+  /* ── 1. Unlock the app shell ──────────────────────────────────────────────── */
+  .app-body {
+    height: auto;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
+  /* ── 2. Release ALL inner scroll containers ───────────────────────────────── */
+  /* Each of these had flex:1 + overflow-y:auto which trapped scroll inside
+     a fixed-height area. With app-body unlocked they must expand naturally. */
+  .manage-content,
+  .editor-scroll,
+  .onboarding-wrap {
+    flex: unset;
+    height: auto;
+    overflow: visible;
+    overflow-x: hidden;
+  }
+
+  /* ── 3. Formatter layout ──────────────────────────────────────────────────── */
+  .formatter-layout {
+    flex: unset;
+    overflow: visible;
+  }
+
+  .formatter-left,
+  .formatter-right {
+    overflow: visible;
+    flex: unset;
+    height: auto;
+  }
+
+  /* Input textarea: natural height, user can resize */
+  .formatter-textarea {
+    min-height: 160px;
+    resize: vertical;
+  }
+
+  /* Output area: grow to fit content, page scrolls past it */
+  .formatter-output-area {
+    overflow: visible;
+    height: auto;
+    min-height: 200px;
+    max-height: none;
+    flex: unset;
+  }
+
+  /* output-area generic class used in block cards etc. — don't trap on mobile */
+  .output-area {
+    overflow: visible;
+    height: auto;
+  }
+
+  /* Rules drawer */
+  .rules-drawer { margin-top: var(--space-sm); }
+
+  /* Padding on mobile columns */
+  .formatter-left  { padding: var(--space-md) var(--space-md) 0; }
+  .formatter-right { padding: 0 var(--space-md) var(--space-lg); }
+
+  /* ── 4. Tab strips: don't try to stick on mobile ─────────────────────────── */
+  /* On desktop, tabs stick below the navbar (top:57px). On mobile the navbar */
+  /* wraps and the page scrolls, so sticky tabs with a fixed offset breaks.   */
+  .manage-tabs {
+    position: static;
+  }
+}
+
 /* ── Desktop two-column formatter ───────────────────────────────────────────── */
 @media (min-width: 768px) {
   .formatter-layout {
@@ -626,6 +714,8 @@ input[type="radio"]:focus-visible + .character-card {
     flex: 1;
     padding: var(--space-lg);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 }
 
@@ -736,10 +826,14 @@ input[type="radio"]:focus-visible + .character-card {
 .manage-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--space-lg);
   position: relative;
   z-index: 1;
   -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 640px) {
+  .manage-content { padding: var(--space-md); }
 }
 
 /* ── Section header ─────────────────────────────────────────────────────────── */
@@ -749,6 +843,7 @@ input[type="radio"]:focus-visible + .character-card {
   justify-content: space-between;
   gap: var(--space-md);
   margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
 }
 
 .manage-char-field {
@@ -791,6 +886,9 @@ input[type="radio"]:focus-visible + .character-card {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-variant: normal;
+  font-variant-caps: normal;
+  text-transform: none;
 }
 
 .item-actions {
@@ -905,7 +1003,7 @@ input[type="radio"]:focus-visible + .character-card {
 /* ── Template rules grid ────────────────────────────────────────────────────── */
 .rules-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: var(--space-sm) var(--space-md);
   background: var(--bg-accent);
   border: var(--border-width) solid var(--border);
@@ -988,7 +1086,7 @@ input[type="radio"]:focus-visible + .character-card {
 
 .block-card-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-sm);
   padding: 10px 14px;
@@ -996,6 +1094,31 @@ input[type="radio"]:focus-visible + .character-card {
   flex-shrink: 0;
 }
 
+/* Block card name + trigger sub-label */
+.block-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.block-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.block-card-trigger-sub {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+/* Legacy trigger class kept for compatibility */
 .block-card-trigger {
   font-family: 'Courier New', monospace;
   font-size: 13px;
@@ -1514,6 +1637,17 @@ input[type="radio"]:focus-visible + .character-card {
   flex: 1;
 }
 
+/* ── Feedback states ────────────────────────────────────────────────────────── */
+.feedback--success { color: var(--color-teal) !important; }
+.feedback--error   { color: var(--color-danger) !important; }
+
+.dialog-status {
+  font-size: 13px;
+  min-height: 1.2em;
+  margin: 0 0 var(--space-sm);
+  color: var(--color-muted);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    PHASE 6 — Admin panel + suggest/diff/update
    ═══════════════════════════════════════════════════════════════════════════════ */
@@ -1535,7 +1669,14 @@ input[type="radio"]:focus-visible + .character-card {
 
 /* ── Admin layout sections ──────────────────────────────────────────────────── */
 .admin-section {
-  margin-bottom: var(--space-xl);
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+.admin-section .section-heading {
+  margin-bottom: var(--space-md);
 }
 
 .admin-create-form {
@@ -1584,6 +1725,10 @@ input[type="radio"]:focus-visible + .character-card {
 
 .admin-table .td-date { font-size: 13px; color: var(--color-muted); }
 .admin-table .td-actions { text-align: right; white-space: nowrap; }
+.admin-table .td-username {
+  font-variant: normal;
+  font-variant-caps: normal;
+}
 
 .user-row--inactive td { opacity: 0.55; }
 
@@ -1902,6 +2047,8 @@ input[type="radio"]:focus-visible + .character-card {
   text-decoration: none;
   color: var(--color-text);
   min-height: 72px;
+  position: relative;
+  z-index: 1;
   transition: border-color 0.15s, background 0.15s, transform 0.1s;
 }
 
@@ -1957,15 +2104,424 @@ input[type="radio"]:focus-visible + .character-card {
   padding: 10px 18px;
 }
 
-/* ── Navbar: tighten on small screens ───────────────────────────────────────── */
-@media (max-width: 479px) {
+/* ── Navbar: tighten on small/medium screens ────────────────────────────────── */
+
+/* 768–900px: compact but single-line */
+@media (max-width: 900px) {
   .navbar { padding: 10px 14px; }
   .nav-actions { gap: 4px; }
-  .btn-ghost { padding: 6px 10px; font-size: 12px; }
-  .nav-logo { font-size: 15px; }
+  .btn-ghost { padding: 7px 10px; font-size: 12px; }
+  .nav-username { max-width: 80px; }
+}
+
+/* < 640px: wrap nav to two lines, hide username label to save space */
+@media (max-width: 640px) {
+  .navbar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+  }
+  .nav-username { display: none; }
+  .nav-actions {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .btn-ghost { padding: 6px 9px; font-size: 11px; }
+}
+
+/* < 480px: ultra-compact */
+@media (max-width: 479px) {
+  .nav-logo { font-size: 14px; }
 }
 
 /* ── Tablet+: login card wider ──────────────────────────────────────────────── */
 @media (min-width: 640px) {
   .login-card { padding: 44px 40px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   RESPONSIVE — 1024 / 900 / 768 px audit fixes
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 900px: two-column formatter narrows correctly ──────────────────────────── */
+@media (min-width: 768px) and (max-width: 900px) {
+  .formatter-left {
+    flex: 0 0 44%;
+    max-width: none;
+  }
+}
+
+/* ── 768px and below: manage/admin/library pages use page-level scroll ──────── */
+@media (max-width: 768px) {
+  /* Onboarding / editor page: let content breathe, remove viewport height lock */
+  .editor-scroll {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .editor-container {
+    padding: var(--space-lg) var(--space-md) 60px;
+  }
+  .editor-section {
+    padding: var(--space-md);
+  }
+
+  /* Admin table: horizontal scroll on small screens */
+  .admin-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Admin sections: less padding on mobile */
+  .admin-section {
+    padding: var(--space-md);
+  }
+
+  /* Manage content padding — also handled in the mobile block above */
+  .manage-content { padding: var(--space-md); }
+}
+
+/* ── Background illustration: ensure it never bleeds over content ──────────── */
+.bg-illustration {
+  z-index: 0 !important;
+  pointer-events: none;
+}
+
+/* Broad catch-all: any direct child of app-body that holds scrollable content
+   must establish its own stacking context above the fixed illustration */
+.app-body > *:not(.bg-illustration) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   BUNDLE 3 — WYSIWYG rules drawer, insert-block panel, shell section editor,
+               library card names, existing-rules section
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── WYSIWYG rule editor ─────────────────────────────────────────────────────── */
+
+.wysiwyg-rule-section {
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--border);
+}
+.wysiwyg-rule-section:last-of-type { border-bottom: none; }
+
+.wysiwyg-rule-heading {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-label);
+  margin-bottom: var(--space-sm);
+}
+
+.wysiwyg-fmt-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-sm);
+}
+
+.wysiwyg-fmt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: var(--border-width) solid var(--border);
+  background: var(--bg-surface);
+  color: var(--color-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.wysiwyg-fmt-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.wysiwyg-fmt-btn.active {
+  background: var(--bg-accent);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.wysiwyg-fmt-btn strong { font-weight: 800; font-size: 15px; }
+.wysiwyg-fmt-btn em     { font-style: italic; }
+
+/* Color control group */
+.wysiwyg-color-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wysiwyg-color-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  border: var(--border-width) solid var(--border);
+  background: var(--bg-surface);
+  color: var(--color-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.wysiwyg-color-toggle:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.wysiwyg-color-toggle.active {
+  background: var(--bg-accent);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.wysiwyg-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* Native color picker — small square swatch */
+.wysiwyg-color-input {
+  width: 34px;
+  height: 34px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  border: var(--border-width) solid var(--border);
+  background: var(--bg-surface);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.wysiwyg-hex-input {
+  width: 80px;
+  font-size: 12px;
+  padding: 6px 8px;
+  height: 34px;
+}
+
+/* Preview area */
+.wysiwyg-preview {
+  margin-bottom: var(--space-sm);
+}
+.wysiwyg-preview-output {
+  font-size: 13px;
+  padding: 8px 12px;
+  min-height: 36px;
+  border-radius: var(--radius-sm);
+  border: var(--border-width) solid var(--border);
+  background: var(--bg-page);
+}
+
+/* Advanced details */
+.wysiwyg-advanced {
+  margin-top: var(--space-xs);
+}
+.wysiwyg-advanced summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--color-muted);
+  user-select: none;
+  padding: 4px 0;
+}
+.wysiwyg-advanced summary:hover { color: var(--color-primary); }
+
+.wysiwyg-raw-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+@media (max-width: 480px) {
+  .wysiwyg-raw-row { grid-template-columns: 1fr; }
+}
+
+.wysiwyg-raw-label {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.wysiwyg-raw-field {}
+
+/* ── Insert Block panel ──────────────────────────────────────────────────────── */
+
+.insert-block-panel {
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.insert-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.insert-block-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-label);
+}
+
+.insert-block-body {
+  padding: 8px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 44px;
+  align-items: center;
+}
+
+.insert-block-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  border: var(--border-width) solid var(--border);
+  background: var(--bg-surface);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.insert-block-chip:hover {
+  background: var(--bg-accent);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.insert-block-empty {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.insert-block-empty a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.insert-block-empty a:hover { text-decoration: underline; }
+
+/* ── Shell section editor ────────────────────────────────────────────────────── */
+
+.shell-section-editor {
+  padding: var(--space-md) var(--space-md) var(--space-sm);
+  border-bottom: 1px solid var(--border);
+}
+
+.shell-section-heading {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-label);
+  margin-bottom: var(--space-sm);
+}
+
+.shell-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm) var(--space-md);
+}
+
+@media (max-width: 640px) {
+  .shell-fields-grid { grid-template-columns: 1fr; }
+}
+
+.shell-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 0;
+}
+
+.shell-field-row .field-label {
+  margin-bottom: 0;
+}
+
+.shell-color-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shell-color-input {
+  width: 36px;
+  height: 34px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  border: var(--border-width) solid var(--border);
+  background: var(--bg-surface);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.shell-hex-input {
+  width: 90px;
+  font-size: 12px;
+}
+
+/* ── Existing rules section (editor — edit mode) ─────────────────────────────── */
+
+.existing-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.existing-rule-item {
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.existing-rules-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-top: var(--space-xs);
+}
+
+.reextract-hint {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+/* ── rules-drawer-footer alignment ──────────────────────────────────────────── */
+.rules-drawer-footer {
+  padding-top: var(--space-sm);
+}
+
+.rules-save-status {
+  font-size: 12px;
+}
+.rules-save-status.feedback--success { color: var(--color-teal); }
+.rules-save-status.feedback--error   { color: var(--color-danger); }

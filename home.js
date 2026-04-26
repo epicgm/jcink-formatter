@@ -4,6 +4,7 @@
  */
 import { createClient }     from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { formatPost, convertBBCodeToHTML } from './parser.js';
+import { withFeedback, makeWysiwygGroup, WYSIWYG_RULE_GROUPS } from './utils.js';
 import { mountBlockBuilder } from './block-builder.js';
 import {
   checkOnline,
@@ -50,6 +51,7 @@ const rulesDrawerBody   = document.getElementById('rules-drawer-body');
 
 let _templates     = {};   // id → full template object
 let currentTmpl    = null;
+let currentCharId  = null; // currently selected character id (for edit link)
 let currentRepls   = [];
 let _isOnline      = true;
 let _copyContent   = '';   // formatted output WITH [dohtml] tags, used by copy btn
@@ -215,6 +217,7 @@ async function loadReplacements(tmpl) {
 // ── Selection handlers ────────────────────────────────────────────────────────
 
 async function onCharacterSelect(characterId) {
+  currentCharId = characterId;
   await loadTemplates(characterId);
   updateOutput();
 }
@@ -292,14 +295,8 @@ copyBtn.addEventListener('click', async () => {
   }
 });
 
-// ── Rules drawer ─────────────────────────────────────────────────────────────
-
-const RULE_FIELDS = [
-  { key: 'dialogueOpen',  label: 'Dialogue Open',  placeholder: '<span class="dialogue">' },
-  { key: 'dialogueClose', label: 'Dialogue Close', placeholder: '</span>' },
-  { key: 'thoughtOpen',   label: 'Thought Open',   placeholder: '<span class="thought">' },
-  { key: 'thoughtClose',  label: 'Thought Close',  placeholder: '</span>' },
-];
+// ── Rules drawer — WYSIWYG ────────────────────────────────────────────────────
+// makeWysiwygGroup + WYSIWYG_RULE_GROUPS are imported from utils.js
 
 function renderRulesDrawer() {
   rulesDrawerBody.innerHTML = '';
@@ -309,49 +306,29 @@ function renderRulesDrawer() {
     return;
   }
 
-  const rules = { ...(currentTmpl.rules_json ?? {}) };
+  // Working copy — WYSIWYG groups write into this as user edits
+  const draftRules = { ...(currentTmpl.rules_json ?? {}) };
 
-  // Rule fields
-  const fieldsWrap = document.createElement('div');
-  fieldsWrap.className = 'rules-drawer-fields';
+  // Hint — link to the actual edit-character page for this character
+  const editUrl = currentCharId
+    ? `editor.html?character_id=${currentCharId}`
+    : 'manage.html';
+  const hint = document.createElement('p');
+  hint.className = 'rules-drawer-hint';
+  hint.innerHTML = `Quick rule overrides for the selected template. <a href="${editUrl}">Edit character →</a>`;
+  rulesDrawerBody.appendChild(hint);
 
-  for (const { key, label, placeholder } of RULE_FIELDS) {
-    const row = document.createElement('div');
-    row.className = 'field rules-drawer-field';
-
-    const lbl = document.createElement('label');
-    lbl.className = 'field-label';
-    lbl.textContent = label;
-    lbl.htmlFor = `rule-${key}`;
-
-    const inp = document.createElement('input');
-    inp.type        = 'text';
-    inp.id          = `rule-${key}`;
-    inp.className   = 'input input--mono';
-    inp.placeholder = placeholder;
-    inp.value       = rules[key] ?? '';
-    inp.dataset.ruleKey = key;
-
-    // Live preview: update output as user edits rules
-    inp.addEventListener('input', () => {
-      const draft   = getDraftRules();
-      const shell   = currentTmpl?.shell_html ?? null;
-      const bbCont  = formatPost(rawInput.value, { replacements: currentRepls, rules: draft });
-      _copyContent  = shell ? shell.replace('{{content}}', bbCont) : bbCont;
-      const htmlCont = convertBBCodeToHTML(bbCont);
-      const display  = (shell ? shell.replace('{{content}}', htmlCont) : htmlCont)
-        .replace(/\[dohtml\]/gi, '').replace(/\[\/dohtml\]/gi, '');
-      outputEl.innerHTML = display || '<span class="output-placeholder">Formatted output appears here…</span>';
+  // WYSIWYG groups
+  for (const group of WYSIWYG_RULE_GROUPS) {
+    const section = makeWysiwygGroup(group, draftRules, (openKey, openVal, closeKey, closeVal) => {
+      draftRules[openKey]  = openVal;
+      draftRules[closeKey] = closeVal;
+      livePreviewRules(draftRules);
     });
-
-    row.appendChild(lbl);
-    row.appendChild(inp);
-    fieldsWrap.appendChild(row);
+    rulesDrawerBody.appendChild(section);
   }
 
-  rulesDrawerBody.appendChild(fieldsWrap);
-
-  // Footer: save + link
+  // Footer: save button
   const footer = document.createElement('div');
   footer.className = 'rules-drawer-footer';
 
@@ -359,24 +336,29 @@ function renderRulesDrawer() {
   saveBtn.type = 'button';
   saveBtn.className = 'btn-primary btn-sm';
   saveBtn.textContent = 'Save Rules';
-  saveBtn.addEventListener('click', () => saveRules(saveBtn));
+  saveBtn.addEventListener('click', () => saveRules(saveBtn, draftRules));
 
   const saveStatus = document.createElement('span');
   saveStatus.className = 'rules-save-status';
   saveStatus.id = 'rules-save-status';
 
-  const link = document.createElement('a');
-  link.href = `manage.html`;
-  link.className = 'rules-drawer-hint';
-  link.textContent = 'Full editor in Characters →';
-
   footer.appendChild(saveBtn);
   footer.appendChild(saveStatus);
-  footer.appendChild(link);
   rulesDrawerBody.appendChild(footer);
 }
 
+function livePreviewRules(draftRules) {
+  const shell    = currentTmpl?.shell_html ?? null;
+  const bbCont   = formatPost(rawInput.value, { replacements: currentRepls, rules: draftRules });
+  _copyContent   = shell ? shell.replace('{{content}}', bbCont) : bbCont;
+  const htmlCont = convertBBCodeToHTML(bbCont);
+  const display  = (shell ? shell.replace('{{content}}', htmlCont) : htmlCont)
+    .replace(/\[dohtml\]/gi, '').replace(/\[\/dohtml\]/gi, '');
+  outputEl.innerHTML = display || '<span class="output-placeholder">Formatted output appears here…</span>';
+}
+
 function getDraftRules() {
+  // Collect from raw BBCode inputs visible in the drawer
   const draft = {};
   rulesDrawerBody.querySelectorAll('[data-rule-key]').forEach(inp => {
     const val = inp.value.trim();
@@ -385,30 +367,28 @@ function getDraftRules() {
   return draft;
 }
 
-async function saveRules(btn) {
+async function saveRules(btn, draftRules) {
   if (!currentTmpl) return;
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
   const status = document.getElementById('rules-save-status');
 
-  const rules = getDraftRules();
-  const { error } = await supabase
-    .from('templates')
-    .update({ rules_json: Object.keys(rules).length ? rules : null })
-    .eq('id', currentTmpl.id);
+  // Use the passed draftRules if available; fall back to reading raw inputs
+  const rules = draftRules ?? getDraftRules();
 
-  if (error) {
-    if (status) { status.textContent = 'Error: ' + error.message; status.style.color = 'var(--color-danger)'; }
-  } else {
+  await withFeedback(btn, status, async () => {
+    const { error } = await supabase
+      .from('templates')
+      .update({ rules_json: Object.keys(rules).length ? rules : null })
+      .eq('id', currentTmpl.id);
+    if (error) throw error;
+
     // Update in-memory template so future updateOutput calls use the saved rules
     currentTmpl = { ...currentTmpl, rules_json: Object.keys(rules).length ? rules : null };
     _templates[currentTmpl.id] = currentTmpl;
-    if (status) { status.textContent = '✓ Saved'; status.style.color = 'var(--color-teal)'; }
-    setTimeout(() => { if (status) status.textContent = ''; }, 2500);
-  }
-
-  btn.disabled = false;
-  btn.textContent = 'Save Rules';
+  }, {
+    loading:    'Saving…',
+    success:    '✓ Saved',
+    clearDelay: 2500,
+  });
 }
 
 rulesDrawerToggle.addEventListener('click', () => {
@@ -423,6 +403,55 @@ logoutBtn.addEventListener('click', async () => {
   localStorage.removeItem('inkform_role');
   window.location.href = 'index.html';
 });
+
+// ── Insert Block panel ────────────────────────────────────────────────────────
+
+const insertBlockChips = document.getElementById('insert-block-chips');
+
+function insertBlock(trigger) {
+  const token = `::${trigger}::`;
+  const start  = rawInput.selectionStart ?? rawInput.value.length;
+  const end    = rawInput.selectionEnd   ?? start;
+  const before = rawInput.value.substring(0, start);
+  const after  = rawInput.value.substring(end);
+  rawInput.value = before + token + after;
+  const cursor = start + token.length;
+  rawInput.selectionStart = cursor;
+  rawInput.selectionEnd   = cursor;
+  rawInput.focus();
+  updateOutput();
+}
+
+async function loadInsertPanel() {
+  if (!insertBlockChips) return;
+
+  const { data } = await supabase
+    .from('user_library')
+    .select('id, trigger, display_name')
+    .eq('user_id', userId)
+    .order('trigger');
+
+  const blocks = data ?? [];
+  insertBlockChips.innerHTML = '';
+
+  if (!blocks.length) {
+    const empty = document.createElement('span');
+    empty.className = 'insert-block-empty';
+    empty.innerHTML = 'No blocks yet — add some in <a href="library.html">My Library</a>';
+    insertBlockChips.appendChild(empty);
+    return;
+  }
+
+  for (const b of blocks) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'insert-block-chip';
+    chip.textContent = b.display_name || b.trigger;
+    chip.title = `Insert ::${b.trigger}::`;
+    chip.addEventListener('click', () => insertBlock(b.trigger));
+    insertBlockChips.appendChild(chip);
+  }
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -439,4 +468,5 @@ if (!_isOnline) {
   });
 }
 await loadCharacters();
+await loadInsertPanel();
 updateOutput();

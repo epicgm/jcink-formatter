@@ -156,9 +156,10 @@
         <label class="field-label" for="char-name-input">Name</label>
         <input type="text" id="char-name-input" class="input" placeholder="Character name" required autocomplete="off" maxlength="100" />
       </div>
+      <p class="dialog-status" id="char-status" aria-live="polite"></p>
       <div class="dialog-footer">
         <button type="button" class="btn-secondary dialog-cancel">Cancel</button>
-        <button type="submit" class="btn-primary">Save</button>
+        <button type="submit" class="btn-primary" id="char-submit-btn">Save</button>
       </div>
     </form>
   </dialog>
@@ -204,9 +205,10 @@
         <div id="tmpl-blocks-list" class="blocks-checklist"></div>
         <p id="tmpl-blocks-empty" class="empty-state" hidden>No library blocks found. Add some in the Library tab first.</p>
       </div>
+      <p class="dialog-status" id="tmpl-status" aria-live="polite"></p>
       <div class="dialog-footer">
         <button type="button" class="btn-secondary dialog-cancel">Cancel</button>
-        <button type="submit" class="btn-primary">Save</button>
+        <button type="submit" class="btn-primary" id="tmpl-submit-btn">Save</button>
       </div>
     </form>
   </dialog>
@@ -226,9 +228,10 @@
         <label class="field-label" for="block-html-input">Replacement HTML</label>
         <textarea id="block-html-input" class="textarea-input textarea--mono" rows="6" placeholder='<div class="post-header">...</div>'></textarea>
       </div>
+      <p class="dialog-status" id="block-status" aria-live="polite"></p>
       <div class="dialog-footer">
         <button type="button" class="btn-secondary dialog-cancel">Cancel</button>
-        <button type="submit" class="btn-primary">Save</button>
+        <button type="submit" class="btn-primary" id="block-submit-btn">Save</button>
       </div>
     </form>
   </dialog>

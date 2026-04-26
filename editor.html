@@ -110,9 +110,22 @@
         </div>
       </section>
 
+      <!-- ── Step 1b: Edit rules (edit mode only — always shown when character_id in URL) ── -->
+      <section class="editor-section" id="existing-rules-section" hidden>
+        <h2 class="section-heading">2 — Edit rules</h2>
+        <p class="section-hint">Edit your formatting rules below, then click <strong>Save Changes</strong>. To rebuild rules from the template HTML, use the <strong>Re-extract</strong> button at the bottom.</p>
+        <div id="existing-rules-content" class="existing-rules-list"></div>
+        <div class="existing-rules-actions">
+          <button type="button" id="reextract-btn" class="btn-ghost btn-sm">
+            ↓ Re-extract from template
+          </button>
+          <span class="reextract-hint">Runs AI extraction from the template below and replaces the rules above</span>
+        </div>
+      </section>
+
       <!-- ── Step 2: Template paste + extraction ──────────── -->
-      <section class="editor-section">
-        <h2 class="section-heading">2 — Paste existing template</h2>
+      <section class="editor-section" id="template-section">
+        <h2 class="section-heading" id="template-section-heading">2 — Paste existing template</h2>
         <p class="section-hint">Paste the full dohtml block. Claude will identify your shell HTML, dialogue rules, thought rules, and flag anything it can't classify.</p>
 
         <div class="field">

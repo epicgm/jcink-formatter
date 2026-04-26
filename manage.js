@@ -3,6 +3,7 @@
  * Requires config.js loaded first (sets window.SUPABASE_URL / SUPABASE_ANON_KEY)
  */
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { withFeedback }  from './utils.js';
 import {
   checkOnline,
   showOfflineBanner,
@@ -69,6 +70,14 @@ const blockForm     = document.getElementById('block-form');
 const blockDlgTitle = document.getElementById('block-dialog-title');
 const blockTrigIn   = document.getElementById('block-trigger-input');
 const blockHtmlIn   = document.getElementById('block-html-input');
+
+// Dialog submit buttons + status elements
+const charSubmitBtn  = document.getElementById('char-submit-btn');
+const charStatus     = document.getElementById('char-status');
+const tmplSubmitBtn  = document.getElementById('tmpl-submit-btn');
+const tmplStatus     = document.getElementById('tmpl-status');
+const blockSubmitBtn = document.getElementById('block-submit-btn');
+const blockStatus    = document.getElementById('block-status');
 
 // Navbar
 const themeToggle   = document.getElementById('theme-toggle');
@@ -148,8 +157,8 @@ function renderCharList(chars) {
   charEmpty.hidden = chars.length > 0;
   for (const c of chars) {
     charList.appendChild(makeItemRow(c.name, [
-      { label: 'Edit',   cls: 'btn-ghost',  fn: () => window.location.href = `editor.html?character_id=${c.id}` },
-      { label: 'Delete', cls: 'btn-danger', fn: () => deleteChar(c.id, c.name) },
+      { label: 'Edit',   cls: 'btn-ghost',  fn: ()    => window.location.href = `editor.html?character_id=${c.id}` },
+      { label: 'Delete', cls: 'btn-danger', fn: (btn) => deleteChar(c.id, c.name, btn) },
     ]));
   }
 }
@@ -187,20 +196,19 @@ charForm.addEventListener('submit', async e => {
   const name = charNameIn.value.trim();
   if (!name) return;
 
-  if (!_isOnline) {
-    // Queue simple rename updates; skip new-character inserts (forwardfill can't run offline)
-    if (_editCharId) {
-      enqueueWrite({ table: 'characters', op: 'update', id: _editCharId, payload: { name } });
-      charDialog.close();
-      // Optimistic update in the list
-      await loadCharacters();
-    } else {
-      alert('Cannot create a new character while offline. Please reconnect first.');
+  await withFeedback(charSubmitBtn, charStatus, async () => {
+    if (!_isOnline) {
+      // Queue simple rename updates; skip new-character inserts (forwardfill can't run offline)
+      if (_editCharId) {
+        enqueueWrite({ table: 'characters', op: 'update', id: _editCharId, payload: { name } });
+        charDialog.close();
+        await loadCharacters();
+      } else {
+        throw new Error('Cannot create a new character while offline. Please reconnect first.');
+      }
+      return;
     }
-    return;
-  }
 
-  try {
     if (_editCharId) {
       const { error } = await supabase.from('characters').update({ name }).eq('id', _editCharId);
       if (error) throw error;
@@ -227,26 +235,26 @@ charForm.addEventListener('submit', async e => {
         }
       }
     }
-  } catch {
-    alert('Could not save that change. Try again or export a backup from the Library page.');
-    return;
-  }
 
-  charDialog.close();
-  await loadCharacters();
+    charDialog.close();
+    await loadCharacters();
+  }, { loading: 'Saving…' });
 });
 
-async function deleteChar(id, name) {
+async function deleteChar(id, name, btn) {
   if (!confirm(`Delete "${name}" and all its templates?`)) return;
-  await supabase.from('characters').delete().eq('id', id);
-  await loadCharacters();
-  if (tmplCharSel.value === id) {
-    tmplCharSel.value = '';
-    renderTemplateList([]);
-    tmplEmpty.textContent = 'Select a character to see templates.';
-    tmplEmpty.hidden = false;
-    newTmplBtn.disabled = true;
-  }
+  await withFeedback(btn, null, async () => {
+    const { error } = await supabase.from('characters').delete().eq('id', id);
+    if (error) throw error;
+    await loadCharacters();
+    if (tmplCharSel.value === id) {
+      tmplCharSel.value = '';
+      renderTemplateList([]);
+      tmplEmpty.textContent = 'Select a character to see templates.';
+      tmplEmpty.hidden = false;
+      newTmplBtn.disabled = true;
+    }
+  }, { loading: 'Deleting…' });
 }
 
 // ── TEMPLATES ─────────────────────────────────────────────────────────────────
@@ -280,8 +288,8 @@ function renderTemplateList(tmpls) {
   tmplEmpty.textContent = 'No templates for this character yet.';
   for (const t of tmpls) {
     tmplList.appendChild(makeItemRow(t.name, [
-      { label: 'Edit',   cls: 'btn-ghost',  fn: () => openTmplEdit(t) },
-      { label: 'Delete', cls: 'btn-danger', fn: () => deleteTmpl(t.id, t.name) },
+      { label: 'Edit',   cls: 'btn-ghost',  fn: ()    => openTmplEdit(t) },
+      { label: 'Delete', cls: 'btn-danger', fn: (btn) => deleteTmpl(t.id, t.name, btn) },
     ]));
   }
 }
@@ -344,65 +352,65 @@ tmplForm.addEventListener('submit', async e => {
   const name = tmplNameIn.value.trim();
   if (!name) return;
 
-  if (!_isOnline) {
-    if (_editTmplId) {
-      const rules = {};
-      if (tmplDlgOpen.value.trim())  rules.dialogueOpen  = tmplDlgOpen.value.trim();
-      if (tmplDlgClose.value.trim()) rules.dialogueClose = tmplDlgClose.value.trim();
-      if (tmplThkOpen.value.trim())  rules.thoughtOpen   = tmplThkOpen.value.trim();
-      if (tmplThkClose.value.trim()) rules.thoughtClose  = tmplThkClose.value.trim();
-      enqueueWrite({
-        table: 'templates',
-        op: 'update',
-        id: _editTmplId,
-        payload: {
-          name,
-          shell_html: tmplShellIn.value.trim() || null,
-          rules_json: Object.keys(rules).length ? rules : null,
-        },
-      });
-      tmplDialog.close();
-      await loadTemplates(tmplCharSel.value);
-    } else {
-      alert('Cannot create a new template while offline. Please reconnect first.');
+  await withFeedback(tmplSubmitBtn, tmplStatus, async () => {
+    if (!_isOnline) {
+      if (_editTmplId) {
+        const rules = {};
+        if (tmplDlgOpen.value.trim())  rules.dialogueOpen  = tmplDlgOpen.value.trim();
+        if (tmplDlgClose.value.trim()) rules.dialogueClose = tmplDlgClose.value.trim();
+        if (tmplThkOpen.value.trim())  rules.thoughtOpen   = tmplThkOpen.value.trim();
+        if (tmplThkClose.value.trim()) rules.thoughtClose  = tmplThkClose.value.trim();
+        enqueueWrite({
+          table: 'templates',
+          op: 'update',
+          id: _editTmplId,
+          payload: {
+            name,
+            shell_html: tmplShellIn.value.trim() || null,
+            rules_json: Object.keys(rules).length ? rules : null,
+          },
+        });
+        tmplDialog.close();
+        await loadTemplates(tmplCharSel.value);
+      } else {
+        throw new Error('Cannot create a new template while offline. Please reconnect first.');
+      }
+      return;
     }
-    return;
-  }
 
-  const rules = {};
-  if (tmplDlgOpen.value.trim())  rules.dialogueOpen  = tmplDlgOpen.value.trim();
-  if (tmplDlgClose.value.trim()) rules.dialogueClose = tmplDlgClose.value.trim();
-  if (tmplThkOpen.value.trim())  rules.thoughtOpen   = tmplThkOpen.value.trim();
-  if (tmplThkClose.value.trim()) rules.thoughtClose  = tmplThkClose.value.trim();
+    const rules = {};
+    if (tmplDlgOpen.value.trim())  rules.dialogueOpen  = tmplDlgOpen.value.trim();
+    if (tmplDlgClose.value.trim()) rules.dialogueClose = tmplDlgClose.value.trim();
+    if (tmplThkOpen.value.trim())  rules.thoughtOpen   = tmplThkOpen.value.trim();
+    if (tmplThkClose.value.trim()) rules.thoughtClose  = tmplThkClose.value.trim();
 
-  // Explicitly checked blocks from the dialog
-  const checkedIds = [...tmplBlocksList.querySelectorAll('input[type=checkbox]:checked')]
-    .map(cb => cb.value);
+    // Explicitly checked blocks from the dialog
+    const checkedIds = [...tmplBlocksList.querySelectorAll('input[type=checkbox]:checked')]
+      .map(cb => cb.value);
 
-  let activeIds = checkedIds;
+    let activeIds = checkedIds;
 
-  // Forwardfill: merge in auto_add_new_templates blocks for new templates
-  if (!_editTmplId) {
-    const { data: autoBlocks } = await supabase
-      .from('user_library')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('auto_add_new_templates', true);
+    // Forwardfill: merge in auto_add_new_templates blocks for new templates
+    if (!_editTmplId) {
+      const { data: autoBlocks } = await supabase
+        .from('user_library')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('auto_add_new_templates', true);
 
-    if (autoBlocks?.length) {
-      const autoIds = autoBlocks.map(b => b.id);
-      activeIds = [...new Set([...checkedIds, ...autoIds])];
+      if (autoBlocks?.length) {
+        const autoIds = autoBlocks.map(b => b.id);
+        activeIds = [...new Set([...checkedIds, ...autoIds])];
+      }
     }
-  }
 
-  const payload = {
-    name,
-    shell_html:       tmplShellIn.value.trim() || null,
-    rules_json:       Object.keys(rules).length ? rules : null,
-    active_block_ids: activeIds.length ? activeIds : null,
-  };
+    const payload = {
+      name,
+      shell_html:       tmplShellIn.value.trim() || null,
+      rules_json:       Object.keys(rules).length ? rules : null,
+      active_block_ids: activeIds.length ? activeIds : null,
+    };
 
-  try {
     if (_editTmplId) {
       const { error } = await supabase.from('templates').update(payload).eq('id', _editTmplId);
       if (error) throw error;
@@ -410,19 +418,19 @@ tmplForm.addEventListener('submit', async e => {
       const { error } = await supabase.from('templates').insert({ ...payload, character_id: tmplCharSel.value });
       if (error) throw error;
     }
-  } catch {
-    alert('Could not save that change. Try again or export a backup from the Library page.');
-    return;
-  }
 
-  tmplDialog.close();
-  await loadTemplates(tmplCharSel.value);
+    tmplDialog.close();
+    await loadTemplates(tmplCharSel.value);
+  }, { loading: 'Saving…' });
 });
 
-async function deleteTmpl(id, name) {
+async function deleteTmpl(id, name, btn) {
   if (!confirm(`Delete template "${name}"?`)) return;
-  await supabase.from('templates').delete().eq('id', id);
-  await loadTemplates(tmplCharSel.value);
+  await withFeedback(btn, null, async () => {
+    const { error } = await supabase.from('templates').delete().eq('id', id);
+    if (error) throw error;
+    await loadTemplates(tmplCharSel.value);
+  }, { loading: 'Deleting…' });
 }
 
 // ── LIBRARY ───────────────────────────────────────────────────────────────────
@@ -441,8 +449,8 @@ async function loadLibrary() {
   for (const b of blocks) {
     const label = `::${b.trigger}::${b.is_global ? '  (global)' : ''}`;
     blockList.appendChild(makeItemRow(label, [
-      { label: 'Edit',   cls: 'btn-ghost',  fn: () => openBlockEdit(b) },
-      { label: 'Delete', cls: 'btn-danger', fn: () => deleteBlock(b.id, b.trigger) },
+      { label: 'Edit',   cls: 'btn-ghost',  fn: ()    => openBlockEdit(b) },
+      { label: 'Delete', cls: 'btn-danger', fn: (btn) => deleteBlock(b.id, b.trigger, btn) },
     ]));
   }
 }
@@ -475,20 +483,26 @@ blockForm.addEventListener('submit', async e => {
     replacement_html: blockHtmlIn.value.trim() || null,
   };
 
-  if (_editBlockId) {
-    await supabase.from('user_library').update(payload).eq('id', _editBlockId);
-  } else {
-    await supabase.from('user_library').insert({ ...payload, user_id: userId });
-  }
-
-  blockDialog.close();
-  await loadLibrary();
+  await withFeedback(blockSubmitBtn, blockStatus, async () => {
+    if (_editBlockId) {
+      const { error } = await supabase.from('user_library').update(payload).eq('id', _editBlockId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from('user_library').insert({ ...payload, user_id: userId });
+      if (error) throw error;
+    }
+    blockDialog.close();
+    await loadLibrary();
+  }, { loading: 'Saving…' });
 });
 
-async function deleteBlock(id, trigger) {
+async function deleteBlock(id, trigger, btn) {
   if (!confirm(`Delete library block "::${trigger}::"?`)) return;
-  await supabase.from('user_library').delete().eq('id', id);
-  await loadLibrary();
+  await withFeedback(btn, null, async () => {
+    const { error } = await supabase.from('user_library').delete().eq('id', id);
+    if (error) throw error;
+    await loadLibrary();
+  }, { loading: 'Deleting…' });
 }
 
 // ── Shared row builder ────────────────────────────────────────────────────────
@@ -509,7 +523,7 @@ function makeItemRow(label, actions) {
     btn.className = `btn-sm ${cls}`;
     btn.textContent = lbl;
     btn.type = 'button';
-    btn.addEventListener('click', fn);
+    btn.addEventListener('click', () => fn(btn));  // pass btn reference to fn
     acts.appendChild(btn);
   }
   row.appendChild(acts);

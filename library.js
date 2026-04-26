@@ -4,6 +4,7 @@
  */
 import { createClient }     from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { mountBlockBuilder } from './block-builder.js';
+import { withFeedback }      from './utils.js';
 import {
   checkOnline,
   showOfflineBanner,
@@ -51,13 +52,17 @@ const globalForm      = document.getElementById('global-form');
 const globalTriggerEl = document.getElementById('global-dialog-trigger');
 const globalCharsWrap = document.getElementById('global-chars-wrap');
 const globalCharsLoad = document.getElementById('global-chars-loading');
+const globalSubmitBtn = document.getElementById('global-submit-btn');
+const globalStatus    = document.getElementById('global-status');
 const backfillRadios  = () => [...globalForm.querySelectorAll('input[name=backfill]')];
 
 // Edit dialog
 const editDialog      = document.getElementById('edit-dialog');
 const editForm        = document.getElementById('edit-form');
+const editSubmitBtn   = document.getElementById('edit-submit-btn');
 const editTriggerIn   = document.getElementById('edit-trigger');
 const editHtmlIn      = document.getElementById('edit-html');
+const editStatus      = document.getElementById('edit-status');
 
 // Export / Import
 const exportBtn       = document.getElementById('export-btn');
@@ -66,6 +71,7 @@ const importFileIn    = document.getElementById('import-file-input');
 const importDialog    = document.getElementById('import-dialog');
 const importPreview   = document.getElementById('import-preview');
 const importConfirmBtn = document.getElementById('import-confirm-btn');
+const importStatus     = document.getElementById('import-status');
 
 // Navbar
 const themeToggle     = document.getElementById('theme-toggle');
@@ -75,6 +81,7 @@ const logoutBtn       = document.getElementById('logout-btn');
 const suggestDialog     = document.getElementById('suggest-dialog');
 const suggestTriggerEl  = document.getElementById('suggest-dialog-trigger');
 const suggestConfirmBtn = document.getElementById('suggest-confirm-btn');
+const suggestStatus     = document.getElementById('suggest-status');
 
 // Diff dialog
 const diffDialog        = document.getElementById('diff-dialog');
@@ -82,6 +89,7 @@ const diffTriggerEl     = document.getElementById('diff-dialog-trigger');
 const diffBlock         = document.getElementById('diff-block');
 const diffSyncBtn       = document.getElementById('diff-sync-btn');
 const diffKeepBtn       = document.getElementById('diff-keep-btn');
+const diffStatus        = document.getElementById('diff-status');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -176,7 +184,7 @@ mountBlockBuilder(builderWrap, {
 async function loadMyLibrary() {
   const { data } = await supabase
     .from('user_library')
-    .select('id, trigger, replacement_html, is_global, auto_add_new_chars, auto_add_new_templates, forked_from, board_source_id')
+    .select('id, trigger, display_name, replacement_html, is_global, auto_add_new_chars, auto_add_new_templates, forked_from, board_source_id')
     .eq('user_id', userId)
     .order('trigger');
 
@@ -208,14 +216,24 @@ function makeMyCard(b, boardUpdatedHtml = null) {
   card.className = 'block-card';
   card.dataset.id = b.id;
 
-  // Header: trigger + global chip
+  // Header: name + global chip
   const header = document.createElement('div');
   header.className = 'block-card-header';
 
-  const trigger = document.createElement('span');
-  trigger.className = 'block-card-trigger';
-  trigger.textContent = `::${b.trigger}::`;
-  header.appendChild(trigger);
+  const info = document.createElement('div');
+  info.className = 'block-card-info';
+
+  const nameEl = document.createElement('span');
+  nameEl.className = 'block-card-name';
+  nameEl.textContent = b.display_name || b.trigger;
+  info.appendChild(nameEl);
+
+  const triggerSub = document.createElement('span');
+  triggerSub.className = 'block-card-trigger-sub';
+  triggerSub.textContent = `::${b.trigger}::`;
+  info.appendChild(triggerSub);
+
+  header.appendChild(info);
 
   const globalChip = document.createElement('button');
   globalChip.type = 'button';
@@ -266,7 +284,11 @@ function makeMyCard(b, boardUpdatedHtml = null) {
   footer.className = 'block-card-footer';
 
   const editBtn = makeBtn('Edit', 'btn-sm btn-ghost', () => openEditDialog(b));
-  const delBtn  = makeBtn('Delete', 'btn-sm btn-danger', () => deleteBlock(b.id, b.trigger));
+  const delBtn  = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.className = 'btn-sm btn-danger';
+  delBtn.textContent = 'Delete';
+  delBtn.addEventListener('click', () => deleteBlock(b.id, b.trigger, delBtn));
   footer.appendChild(editBtn);
   footer.appendChild(delBtn);
 
@@ -349,41 +371,43 @@ globalForm.addEventListener('submit', async e => {
   e.preventDefault();
   if (!_globalBlock) return;
 
-  const backfill     = globalForm.querySelector('input[name=backfill]:checked').value;
-  const autoChars    = globalForm.querySelector('input[name=autoChars]:checked').value === 'yes';
-  const autoTmpls    = globalForm.querySelector('input[name=autoTmpls]:checked').value === 'yes';
+  const backfill  = globalForm.querySelector('input[name=backfill]:checked').value;
+  const autoChars = globalForm.querySelector('input[name=autoChars]:checked').value === 'yes';
+  const autoTmpls = globalForm.querySelector('input[name=autoTmpls]:checked').value === 'yes';
 
-  // Update the block
-  const { error } = await supabase
-    .from('user_library')
-    .update({ is_global: true, auto_add_new_chars: autoChars, auto_add_new_templates: autoTmpls })
-    .eq('id', _globalBlock.id);
-  if (error) { alert(error.message); return; }
+  await withFeedback(globalSubmitBtn, globalStatus, async () => {
+    // Update the block
+    const { error } = await supabase
+      .from('user_library')
+      .update({ is_global: true, auto_add_new_chars: autoChars, auto_add_new_templates: autoTmpls })
+      .eq('id', _globalBlock.id);
+    if (error) throw error;
 
-  // Backfill
-  if (backfill !== 'none') {
-    let charIds;
+    // Backfill
+    if (backfill !== 'none') {
+      let charIds;
 
-    if (backfill === 'all') {
-      const { data: chars } = await supabase
-        .from('characters')
-        .select('id')
-        .eq('user_id', userId);
-      charIds = (chars ?? []).map(c => c.id);
-    } else {
-      // "choose" — read checked boxes
-      charIds = [...globalCharsWrap.querySelectorAll('input[type=checkbox]:checked')]
-        .map(cb => cb.value);
+      if (backfill === 'all') {
+        const { data: chars } = await supabase
+          .from('characters')
+          .select('id')
+          .eq('user_id', userId);
+        charIds = (chars ?? []).map(c => c.id);
+      } else {
+        // "choose" — read checked boxes
+        charIds = [...globalCharsWrap.querySelectorAll('input[type=checkbox]:checked')]
+          .map(cb => cb.value);
+      }
+
+      if (charIds.length) {
+        await backfillBlockToCharacters(_globalBlock.id, charIds);
+      }
     }
 
-    if (charIds.length) {
-      await backfillBlockToCharacters(_globalBlock.id, charIds);
-    }
-  }
-
-  globalDialog.close();
-  _globalBlock = null;
-  await loadMyLibrary();
+    globalDialog.close();
+    _globalBlock = null;
+    await loadMyLibrary();
+  }, { loading: 'Saving…' });
 });
 
 async function backfillBlockToCharacters(blockId, charIds) {
@@ -418,19 +442,24 @@ editForm.addEventListener('submit', async e => {
   const trigger = editTriggerIn.value.trim();
   if (!trigger) return;
 
-  await supabase.from('user_library').update({
-    trigger,
-    replacement_html: editHtmlIn.value.trim() || null,
-  }).eq('id', _editBlockId);
-
-  editDialog.close();
-  await loadMyLibrary();
+  await withFeedback(editSubmitBtn, editStatus, async () => {
+    const { error } = await supabase.from('user_library').update({
+      trigger,
+      replacement_html: editHtmlIn.value.trim() || null,
+    }).eq('id', _editBlockId);
+    if (error) throw error;
+    editDialog.close();
+    await loadMyLibrary();
+  }, { loading: 'Saving…' });
 });
 
-async function deleteBlock(id, trigger) {
+async function deleteBlock(id, trigger, btn) {
   if (!confirm(`Delete library block "::${trigger}::"?\n\nIt will be removed from all templates that use it.`)) return;
-  await supabase.from('user_library').delete().eq('id', id);
-  await loadMyLibrary();
+  await withFeedback(btn, null, async () => {
+    const { error } = await supabase.from('user_library').delete().eq('id', id);
+    if (error) throw error;
+    await loadMyLibrary();
+  }, { loading: 'Deleting…' });
 }
 
 // ── Suggest to board ──────────────────────────────────────────────────────────
@@ -444,24 +473,21 @@ function suggestToBoard(b) {
 
 suggestConfirmBtn.addEventListener('click', async () => {
   if (!_suggestBlock) return;
-  suggestConfirmBtn.disabled = true;
-  suggestConfirmBtn.textContent = 'Submitting…';
 
-  const { error } = await supabase.from('board_library').insert({
-    trigger:          _suggestBlock.trigger,
-    replacement_html: _suggestBlock.replacement_html,
-    added_by:         userId,
-    status:           'pending',
+  await withFeedback(suggestConfirmBtn, suggestStatus, async () => {
+    const { error } = await supabase.from('board_library').insert({
+      trigger:          _suggestBlock.trigger,
+      replacement_html: _suggestBlock.replacement_html,
+      added_by:         userId,
+      status:           'pending',
+    });
+    if (error) throw error;
+    suggestDialog.close();
+    _suggestBlock = null;
+  }, {
+    loading: 'Submitting…',
+    success: '✓ Submitted for review',
   });
-
-  suggestConfirmBtn.disabled = false;
-  suggestConfirmBtn.textContent = 'Submit for review';
-  suggestDialog.close();
-  _suggestBlock = null;
-
-  if (error) {
-    alert(`Could not suggest block: ${error.message}`);
-  }
 });
 
 // ── Diff / update propagation ─────────────────────────────────────────────────
@@ -500,18 +526,16 @@ function makeDiffLine(text, type) {
 
 diffSyncBtn.addEventListener('click', async () => {
   if (!_diffBlock) return;
-  diffSyncBtn.disabled = true;
-  diffSyncBtn.textContent = 'Syncing…';
 
-  await supabase.from('user_library')
-    .update({ replacement_html: _diffBlock.boardHtml })
-    .eq('id', _diffBlock.userBlockId);
-
-  diffSyncBtn.disabled = false;
-  diffSyncBtn.textContent = 'Sync to board version';
-  diffDialog.close();
-  _diffBlock = null;
-  await loadMyLibrary();
+  await withFeedback(diffSyncBtn, diffStatus, async () => {
+    const { error } = await supabase.from('user_library')
+      .update({ replacement_html: _diffBlock.boardHtml })
+      .eq('id', _diffBlock.userBlockId);
+    if (error) throw error;
+    diffDialog.close();
+    _diffBlock = null;
+    await loadMyLibrary();
+  }, { loading: 'Syncing…' });
 });
 
 diffKeepBtn.addEventListener('click', () => {
@@ -527,7 +551,7 @@ async function loadBoardLibrary() {
 
   const { data } = await supabase
     .from('board_library')
-    .select('id, trigger, replacement_html, used_by_count')
+    .select('id, trigger, display_name, replacement_html, used_by_count')
     .eq('status', 'published')
     .order('trigger');
 
@@ -548,10 +572,20 @@ function makeBoardCard(b) {
   const header = document.createElement('div');
   header.className = 'block-card-header';
 
-  const trigger = document.createElement('span');
-  trigger.className = 'block-card-trigger';
-  trigger.textContent = `::${b.trigger}::`;
-  header.appendChild(trigger);
+  const info = document.createElement('div');
+  info.className = 'block-card-info';
+
+  const nameEl = document.createElement('span');
+  nameEl.className = 'block-card-name';
+  nameEl.textContent = b.display_name || b.trigger;
+  info.appendChild(nameEl);
+
+  const triggerSub = document.createElement('span');
+  triggerSub.className = 'block-card-trigger-sub';
+  triggerSub.textContent = `::${b.trigger}::`;
+  info.appendChild(triggerSub);
+
+  header.appendChild(info);
 
   if (b.used_by_count > 0) {
     const badge = document.createElement('span');
@@ -573,8 +607,17 @@ function makeBoardCard(b) {
   const footer = document.createElement('div');
   footer.className = 'block-card-footer';
 
-  const addBtn  = makeBtn('Add to my library',  'btn-sm btn-secondary', () => addFromBoard(b));
-  const forkBtn = makeBtn('Fork to my library', 'btn-sm btn-ghost',     () => forkFromBoard(b));
+  const addBtn  = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn-sm btn-secondary';
+  addBtn.textContent = 'Add to my library';
+  addBtn.addEventListener('click', () => addFromBoard(b, addBtn));
+
+  const forkBtn = document.createElement('button');
+  forkBtn.type = 'button';
+  forkBtn.className = 'btn-sm btn-ghost';
+  forkBtn.textContent = 'Fork to my library';
+  forkBtn.addEventListener('click', () => forkFromBoard(b, forkBtn));
   footer.appendChild(addBtn);
   footer.appendChild(forkBtn);
   card.appendChild(footer);
@@ -582,41 +625,45 @@ function makeBoardCard(b) {
   return card;
 }
 
-async function addFromBoard(b) {
+async function addFromBoard(b, btn) {
   // Locked copy — tracks board version; forked_from stays null per spec
-  const { error } = await supabase.from('user_library').insert({
-    user_id:          userId,
-    trigger:          b.trigger,
-    replacement_html: b.replacement_html,
-    board_source_id:  b.id,   // tracks the board block for future updates
-    forked_from:      null,
+  await withFeedback(btn, null, async () => {
+    const { error } = await supabase.from('user_library').insert({
+      user_id:          userId,
+      trigger:          b.trigger,
+      replacement_html: b.replacement_html,
+      board_source_id:  b.id,   // tracks the board block for future updates
+      forked_from:      null,
+    });
+    if (error) throw error;
+
+    // Increment board used_by_count
+    await supabase.rpc('board_library_increment_used_by', { block_id: b.id });
+    await loadBoardLibrary();
+  }, {
+    loading:    'Adding…',
+    btnSuccess: '✓ Added',
   });
-
-  if (error) { alert(error.message); return; }
-
-  // Increment board used_by_count
-  await supabase.rpc('board_library_increment_used_by', { block_id: b.id });
-
-  alert(`"::${b.trigger}::" added to your library as a locked board copy.`);
-  await loadBoardLibrary();
 }
 
-async function forkFromBoard(b) {
+async function forkFromBoard(b, btn) {
   // Personal editable copy — forked_from = board block id per spec
-  const { error } = await supabase.from('user_library').insert({
-    user_id:          userId,
-    trigger:          b.trigger,
-    replacement_html: b.replacement_html,
-    board_source_id:  null,
-    forked_from:      b.id,   // records which board block this was forked from
+  await withFeedback(btn, null, async () => {
+    const { error } = await supabase.from('user_library').insert({
+      user_id:          userId,
+      trigger:          b.trigger,
+      replacement_html: b.replacement_html,
+      board_source_id:  null,
+      forked_from:      b.id,   // records which board block this was forked from
+    });
+    if (error) throw error;
+
+    await supabase.rpc('board_library_increment_used_by', { block_id: b.id });
+    await loadBoardLibrary();
+  }, {
+    loading:    'Forking…',
+    btnSuccess: '✓ Forked',
   });
-
-  if (error) { alert(error.message); return; }
-
-  await supabase.rpc('board_library_increment_used_by', { block_id: b.id });
-
-  alert(`"::${b.trigger}::" forked to your library. You can edit it freely.`);
-  await loadBoardLibrary();
 }
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -633,10 +680,7 @@ function makeBtn(label, cls, fn) {
 // ── Export my characters ──────────────────────────────────────────────────────
 
 exportBtn.addEventListener('click', async () => {
-  exportBtn.disabled = true;
-  exportBtn.textContent = 'Exporting…';
-
-  try {
+  await withFeedback(exportBtn, null, async () => {
     // Fetch user profile for username
     const { data: profile } = await supabase
       .from('users')
@@ -692,10 +736,7 @@ exportBtn.addEventListener('click', async () => {
     a.download = `characters_${(profile?.username ?? 'export').replace(/[^a-z0-9]/gi, '_')}_${date}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  } finally {
-    exportBtn.disabled = false;
-    exportBtn.textContent = 'Export my characters';
-  }
+  }, { loading: 'Exporting…' });
 });
 
 // ── Import characters ─────────────────────────────────────────────────────────
@@ -757,10 +798,8 @@ function showImportPreview(data) {
 
 importConfirmBtn.addEventListener('click', async () => {
   if (!_importData) return;
-  importConfirmBtn.disabled = true;
-  importConfirmBtn.textContent = 'Importing…';
 
-  try {
+  await withFeedback(importConfirmBtn, importStatus, async () => {
     // Step 1: Insert user_library blocks, build old_id → new_id map
     const idMap = {};
     for (const block of _importData.user_library ?? []) {
@@ -804,12 +843,10 @@ importConfirmBtn.addEventListener('click', async () => {
     importDialog.close();
     _importData = null;
     await loadMyLibrary();
-  } catch (err) {
-    alert('Import failed. Make sure the file is a valid inkform export.');
-  } finally {
-    importConfirmBtn.disabled = false;
-    importConfirmBtn.textContent = 'Import';
-  }
+  }, {
+    loading: 'Importing…',
+    success: null,
+  });
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────

@@ -178,9 +178,10 @@
         </label>
       </fieldset>
 
+      <p class="dialog-status" id="global-status" aria-live="polite"></p>
       <div class="dialog-footer">
         <button type="button" class="btn-secondary dialog-cancel">Cancel</button>
-        <button type="submit" class="btn-primary">Confirm</button>
+        <button type="submit" class="btn-primary" id="global-submit-btn">Confirm</button>
       </div>
     </form>
   </dialog>
@@ -201,9 +202,10 @@
         <label class="field-label" for="edit-html">Replacement HTML</label>
         <textarea id="edit-html" class="textarea-input textarea--mono" rows="6" spellcheck="false"></textarea>
       </div>
+      <p class="dialog-status" id="edit-status" aria-live="polite"></p>
       <div class="dialog-footer">
         <button type="button" class="btn-secondary dialog-cancel">Cancel</button>
-        <button type="submit" class="btn-primary">Save</button>
+        <button type="submit" class="btn-primary" id="edit-submit-btn">Save</button>
       </div>
     </form>
   </dialog>
@@ -213,6 +215,7 @@
     <h3 class="dialog-title">Import Characters</h3>
     <p style="font-size:14px;color:var(--color-text);margin-bottom:var(--space-md)">The following will be added to your account:</p>
     <div id="import-preview" class="import-preview"></div>
+    <p class="dialog-status" id="import-status" aria-live="polite"></p>
     <div class="dialog-footer">
       <button type="button" class="btn-secondary dialog-cancel">Cancel</button>
       <button type="button" class="btn-primary" id="import-confirm-btn">Import</button>
@@ -224,6 +227,7 @@
     <h3 class="dialog-title">Suggest to Board</h3>
     <p class="global-dialog-subtitle"><code id="suggest-dialog-trigger" class="trigger-code"></code></p>
     <p style="font-size:14px;color:var(--color-text);margin-bottom:var(--space-lg)">Send this block to an admin for review. Once approved, it will appear in the Board Library for all users.</p>
+    <p class="dialog-status" id="suggest-status" aria-live="polite"></p>
     <div class="dialog-footer">
       <button type="button" class="btn-secondary dialog-cancel">Cancel</button>
       <button type="button" class="btn-primary" id="suggest-confirm-btn">Submit for review</button>
@@ -236,6 +240,7 @@
     <p class="global-dialog-subtitle"><code id="diff-dialog-trigger" class="trigger-code"></code></p>
     <p class="field-hint" style="margin-bottom:var(--space-md)">The board version of this block has changed. Review the diff and choose what to do.</p>
     <div id="diff-block" class="diff-block"></div>
+    <p class="dialog-status" id="diff-status" aria-live="polite"></p>
     <div class="dialog-footer">
       <button type="button" class="btn-secondary" id="diff-keep-btn">Keep mine</button>
       <button type="button" class="btn-primary"   id="diff-sync-btn">Sync to board version</button>

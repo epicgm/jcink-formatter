@@ -3,7 +3,8 @@
  * Requires config.js loaded first.
  * Redirects non-admin users to home.html immediately.
  */
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { createClient }  from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { withFeedback }  from './utils.js';
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
@@ -59,6 +60,7 @@ const queueCount       = document.getElementById('queue-count');
 const rejectDialog     = document.getElementById('reject-dialog');
 const rejectForm       = document.getElementById('reject-form');
 const rejectNote       = document.getElementById('reject-note');
+const rejectSubmitBtn  = document.getElementById('reject-submit-btn');
 const rejectTriggerEl  = document.getElementById('reject-dialog-trigger').querySelector('code');
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -136,12 +138,11 @@ async function loadUsers() {
     const actionsCell = tr.querySelector('.td-actions');
 
     if (u.active !== false && u.id !== userId) {
-      // Don't show deactivate for self or already-inactive
       const deactivateBtn = document.createElement('button');
       deactivateBtn.type = 'button';
       deactivateBtn.className = 'btn-sm btn-danger';
       deactivateBtn.textContent = 'Deactivate';
-      deactivateBtn.addEventListener('click', () => deactivateUser(u.id, u.username));
+      deactivateBtn.addEventListener('click', () => deactivateUser(u.id, u.username, deactivateBtn));
       actionsCell.appendChild(deactivateBtn);
     }
 
@@ -150,7 +151,7 @@ async function loadUsers() {
       reactivateBtn.type = 'button';
       reactivateBtn.className = 'btn-sm btn-ghost';
       reactivateBtn.textContent = 'Reactivate';
-      reactivateBtn.addEventListener('click', () => reactivateUser(u.id));
+      reactivateBtn.addEventListener('click', () => reactivateUser(u.id, reactivateBtn));
       actionsCell.appendChild(reactivateBtn);
     }
 
@@ -165,14 +166,9 @@ createUserForm.addEventListener('submit', async e => {
   const username = newUsernameIn.value.trim();
   const password = newPasswordIn.value;
   const role     = newRoleSel.value;
-
   if (!username || !password) return;
 
-  createUserBtn.disabled = true;
-  createUserBtn.textContent = 'Creating…';
-  createUserStatus.textContent = '';
-
-  try {
+  await withFeedback(createUserBtn, createUserStatus, async () => {
     // Re-fetch the session token at call time and pass it explicitly.
     // supabase.functions.invoke falls back to sending the anon key as the
     // Bearer token when using sb_publishable_ format keys, which the Edge
@@ -199,33 +195,33 @@ createUserForm.addEventListener('submit', async e => {
     }
     if (data?.error) throw new Error(data.error);
 
-    createUserStatus.textContent = `✓ Created ${username} (${role})`;
-    createUserStatus.style.color = 'var(--color-teal)';
     newUsernameIn.value = '';
     newPasswordIn.value = '';
     newRoleSel.value = 'user';
     await loadUsers();
-
-  } catch (err) {
-    createUserStatus.textContent = `Error: ${err.message}`;
-    createUserStatus.style.color = 'var(--color-danger)';
-  } finally {
-    createUserBtn.disabled = false;
-    createUserBtn.textContent = 'Create User';
-  }
+  }, {
+    loading: 'Creating…',
+    success: `✓ Created ${username} (${role})`,
+  });
 });
 
 // ── Deactivate / reactivate ───────────────────────────────────────────────────
 
-async function deactivateUser(id, username) {
+async function deactivateUser(id, username, btn) {
   if (!confirm(`Deactivate "${username}"? They will be blocked from logging in.`)) return;
-  await supabase.from('users').update({ active: false }).eq('id', id);
-  await loadUsers();
+  await withFeedback(btn, null, async () => {
+    const { error } = await supabase.from('users').update({ active: false }).eq('id', id);
+    if (error) throw error;
+    await loadUsers();
+  }, { loading: 'Deactivating…' });
 }
 
-async function reactivateUser(id) {
-  await supabase.from('users').update({ active: true }).eq('id', id);
-  await loadUsers();
+async function reactivateUser(id, btn) {
+  await withFeedback(btn, null, async () => {
+    const { error } = await supabase.from('users').update({ active: true }).eq('id', id);
+    if (error) throw error;
+    await loadUsers();
+  }, { loading: 'Reactivating…' });
 }
 
 // ── REVIEW QUEUE ──────────────────────────────────────────────────────────────
@@ -290,7 +286,7 @@ function makeReviewCard(b, submitterName) {
   preview.innerHTML = b.replacement_html || '<span class="output-placeholder">No HTML</span>';
   card.appendChild(preview);
 
-  // Actions row (no inline textarea for reject note — opens dialog)
+  // Actions row
   const footer = document.createElement('div');
   footer.className = 'review-card-footer';
 
@@ -298,7 +294,7 @@ function makeReviewCard(b, submitterName) {
   approveBtn.type = 'button';
   approveBtn.className = 'btn-sm btn-primary';
   approveBtn.textContent = 'Approve';
-  approveBtn.addEventListener('click', () => approveBlock(b.id, card));
+  approveBtn.addEventListener('click', () => approveBlock(b.id, approveBtn));
 
   const rejectBtn = document.createElement('button');
   rejectBtn.type = 'button';
@@ -313,20 +309,15 @@ function makeReviewCard(b, submitterName) {
   return card;
 }
 
-async function approveBlock(id, card) {
-  const { error } = await supabase
-    .from('board_library')
-    .update({ status: 'published' })
-    .eq('id', id);
-
-  if (error) { alert(error.message); return; }
-
-  card.classList.add('review-card--done');
-  card.querySelector('.review-card-footer').innerHTML =
-    '<span class="review-done-label review-done-label--approved">✓ Published</span>';
-
-  // Update badge count
-  await loadReviewQueue();
+async function approveBlock(id, btn) {
+  await withFeedback(btn, null, async () => {
+    const { error } = await supabase
+      .from('board_library')
+      .update({ status: 'published' })
+      .eq('id', id);
+    if (error) throw error;
+    await loadReviewQueue();
+  }, { loading: 'Approving…' });
 }
 
 function openRejectDialog(id, trigger) {
@@ -342,16 +333,18 @@ rejectForm.addEventListener('submit', async e => {
   if (!_rejectBlockId) return;
 
   const note = rejectNote.value.trim() || null;
-  const { error } = await supabase
-    .from('board_library')
-    .update({ status: 'rejected', rejection_note: note })
-    .eq('id', _rejectBlockId);
 
-  if (error) { alert(error.message); return; }
+  await withFeedback(rejectSubmitBtn, null, async () => {
+    const { error } = await supabase
+      .from('board_library')
+      .update({ status: 'rejected', rejection_note: note })
+      .eq('id', _rejectBlockId);
+    if (error) throw error;
 
-  rejectDialog.close();
-  _rejectBlockId = null;
-  await loadReviewQueue();
+    rejectDialog.close();
+    _rejectBlockId = null;
+    await loadReviewQueue();
+  }, { loading: 'Rejecting…' });
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -367,11 +360,7 @@ function escHtml(str) {
 // ── Export all users ──────────────────────────────────────────────────────────
 
 exportAllBtn.addEventListener('click', async () => {
-  exportAllBtn.disabled = true;
-  exportAllBtn.textContent = 'Exporting…';
-  exportAllStatus.textContent = '';
-
-  try {
+  await withFeedback(exportAllBtn, exportAllStatus, async () => {
     const [
       { data: users },
       { data: characters },
@@ -419,16 +408,10 @@ exportAllBtn.addEventListener('click', async () => {
     a.download = `inkform_export_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-
-    exportAllStatus.textContent = '✓ Export downloaded';
-    exportAllStatus.style.color = 'var(--color-teal)';
-  } catch (err) {
-    exportAllStatus.textContent = `Error: ${err.message}`;
-    exportAllStatus.style.color = 'var(--color-danger)';
-  } finally {
-    exportAllBtn.disabled = false;
-    exportAllBtn.textContent = 'Export all users (system JSON)';
-  }
+  }, {
+    loading: 'Exporting…',
+    success: '✓ Export downloaded',
+  });
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
